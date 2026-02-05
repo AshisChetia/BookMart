@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment variables (SECRETS - never push!)
+.env
+.env.local
+.env.production
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Agent folder
+.agent/
+.gemini/
+
+# Build outputs
+dist/
+build/
+.next/
