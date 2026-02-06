@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/auth.routes.js"
+import bookRoutes from "./routes/book.routes.js"
+import orderRoutes from "./routes/order.routes.js"
 
 dotenv.config();
 
@@ -16,7 +18,9 @@ app.get('/', (req, res) => {
     res.send("API running")
 })
 
-app.use('/api', authRoutes)
+app.use('/api', authRoutes);
+app.use('/api', bookRoutes);
+app.use('/api', orderRoutes)
 
 const PORT = process.env.PORT || 3000
 
