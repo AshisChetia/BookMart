@@ -74,15 +74,15 @@ const LandingPage = () => {
 
                     {/* Right Column - Featured Visual */}
                     <div className="lg:col-span-6 relative flex items-center justify-center min-h-[500px]">
-                        {/* Main Featured Book */}
+                        {/* Main Featured Book - Psychology of Money (CENTER) */}
                         <div
                             className="relative z-20 w-64 md:w-80 group cursor-pointer"
                             style={{ transform: `translateY(${scrollY * -0.1}px)` }}
                         >
                             <div className="rounded-lg shadow-2xl shadow-primary/30 aspect-[3/4] overflow-hidden transform group-hover:scale-105 transition-transform duration-500 ">
                                 <img
-                                    src="/TopSeller.png"
-                                    alt="Top Seller Book"
+                                    src={assets.landing.featured}
+                                    alt="Psychology of Money - Top Seller"
                                     className="w-full h-full object-cover"
                                     style={{
                                         imageRendering: 'auto',
@@ -97,27 +97,28 @@ const LandingPage = () => {
                             </div>
                         </div>
 
-                        {/* Background Books - Offset */}
+                        {/* Rich Dad Poor Dad - TOP LEFT */}
                         <div
                             className="absolute top-0 left-0 w-48 md:w-56"
                             style={{ transform: `translateY(${scrollY * 0.2}px)` }}
                         >
                             <div className="rounded-lg aspect-[3/4] shadow-xl overflow-hidden">
                                 <img
-                                    src="/SecondImage.png"
-                                    alt="Featured Book"
+                                    src={assets.landing.background1}
+                                    alt="Rich Dad Poor Dad"
                                     className="w-full h-full object-cover"
                                 />
                             </div>
                         </div>
 
+                        {/* Third Book - BOTTOM RIGHT */}
                         <div
                             className="absolute bottom-0 right-0 w-40 md:w-48 "
                             style={{ transform: `translateY(${scrollY * -0.15}px)` }}
                         >
                             <div className="rounded-lg aspect-[3/4] shadow-xl overflow-hidden">
                                 <img
-                                    src="/ThirdImage.png"
+                                    src={assets.landing.background2}
                                     alt="Featured Book"
                                     className="w-full h-full object-cover"
                                 />

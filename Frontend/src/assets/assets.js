@@ -3,7 +3,7 @@
 export const assets = {
     // Landing Page Hero Images
     landing: {
-        featured: "https://res.cloudinary.com/douss7mdx/image/upload/v1770483733/psych-money-cover_c6je1w.png",
+        featured: "https://res.cloudinary.com/douss7mdx/image/upload/psych-money-cover_c6je1w.png",
         background1: "https://res.cloudinary.com/douss7mdx/image/upload/2_adywyn.png",
         background2: "https://res.cloudinary.com/douss7mdx/image/upload/ThirdImage_dq1mdo.png",
     },

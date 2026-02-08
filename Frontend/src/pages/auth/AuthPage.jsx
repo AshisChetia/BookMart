@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { assets } from '../../assets/assets';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 const AuthPage = () => {
+    const [searchParams] = useSearchParams();
+    const mode = searchParams.get('mode');
+
     const [role, setRole] = useState(null); // 'reader' or 'seller'
-    const [isLogin, setIsLogin] = useState(true);
+    const [isLogin, setIsLogin] = useState(mode !== 'signup');
 
     const toggleMode = () => setIsLogin(!isLogin);
     const resetRole = () => setRole(null);
@@ -43,17 +46,17 @@ const AuthPage = () => {
             </div>
 
             {/* === RIGHT SIDE - INTERACTION === */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background relative">
+            <div className="w-full lg:w-1/2 min-h-screen lg:min-h-0 flex flex-col lg:flex-row items-center justify-center p-8 pt-6 bg-background relative overflow-y-auto">
 
-                {/* Mobile Back to Home */}
-                <Link to="/" className="lg:hidden absolute top-8 left-8 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 text-sm uppercase tracking-widest">
+                {/* Mobile Back to Home - Fixed at top */}
+                <Link to="/" className="lg:hidden self-start mb-6 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 text-sm uppercase tracking-widest">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
                     Home
                 </Link>
 
-                <div className="max-w-md w-full">
+                <div className="max-w-md w-full flex-1 lg:flex-none flex flex-col justify-center">
 
                     {!role ? (
                         /* === ROLE SELECTION === */
@@ -188,6 +191,9 @@ const AuthPage = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Mobile bottom spacing */}
+                <div className="lg:hidden h-8" />
             </div>
         </div>
     );

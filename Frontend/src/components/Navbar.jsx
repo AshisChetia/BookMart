@@ -44,10 +44,10 @@ const Navbar = () => {
 
                     {/* Desktop Auth Buttons */}
                     <div className="hidden md:flex items-center gap-6">
-                        <Link to="/auth" className="text-sm text-text-primary hover:text-primary transition-colors cursor-pointer">
+                        <Link to="/auth?mode=login" className="text-sm text-text-primary hover:text-primary transition-colors cursor-pointer">
                             Login
                         </Link>
-                        <Link to="/auth" className="text-sm px-6 py-3 bg-text-primary text-background rounded-full hover:bg-primary transition-all duration-300 cursor-pointer">
+                        <Link to="/auth?mode=signup" className="text-sm px-6 py-3 bg-text-primary text-background rounded-full hover:bg-primary transition-all duration-300 cursor-pointer">
                             Sign Up
                         </Link>
                     </div>
@@ -103,14 +103,14 @@ const Navbar = () => {
 
                     {/* Auth Buttons */}
                     <Link
-                        to="/auth"
+                        to="/auth?mode=login"
                         onClick={closeMenu}
                         className="text-xl text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                     >
                         Login
                     </Link>
                     <Link
-                        to="/auth"
+                        to="/auth?mode=signup"
                         onClick={closeMenu}
                         className="px-10 py-4 bg-text-primary text-background rounded-full text-lg hover:bg-primary transition-colors cursor-pointer"
                     >
