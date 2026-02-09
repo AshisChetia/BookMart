@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const BuyerSidebar = ({ isOpen, onClose }) => {
     const location = useLocation();
+    const { user, logout } = useAuth();
 
     const menuItems = [
         {
@@ -19,14 +21,7 @@ const BuyerSidebar = ({ isOpen, onClose }) => {
                 { name: 'My Profile', path: '/buyer/profile', icon: 'user' },
                 { name: 'My Orders', path: '/buyer/orders', icon: 'package' },
                 { name: 'Wishlist', path: '/buyer/wishlist', icon: 'heart' },
-                { name: 'Cart', path: '/buyer/cart', icon: 'cart', badge: 3 },
-            ]
-        },
-        {
-            label: 'Support',
-            items: [
-                { name: 'Help Center', path: '/buyer/help', icon: 'help' },
-                { name: 'Contact Us', path: '/buyer/contact', icon: 'mail' },
+                { name: 'Cart', path: '/buyer/cart', icon: 'cart' },
             ]
         }
     ];
@@ -54,14 +49,19 @@ const BuyerSidebar = ({ isOpen, onClose }) => {
             cart: (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             ),
-            help: (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            ),
-            mail: (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            ),
         };
         return icons[iconName] || icons.home;
+    };
+
+    const handleLogout = () => {
+        logout();
+        onClose();
+    };
+
+    // Get user initials
+    const getUserInitials = () => {
+        if (!user?.fullname) return 'U';
+        return user.fullname.split(' ').map(n => n[0]).join('').toUpperCase();
     };
 
     return (
@@ -94,11 +94,11 @@ const BuyerSidebar = ({ isOpen, onClose }) => {
                     <div className="p-4 mx-4 mt-4 bg-primary/5 rounded-xl border border-primary/10">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
-                                JD
+                                {getUserInitials()}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-medium text-text-primary truncate">John Doe</p>
-                                <p className="text-sm text-text-muted truncate">john@example.com</p>
+                                <p className="font-medium text-text-primary truncate">{user?.fullname || 'User'}</p>
+                                <p className="text-sm text-text-muted truncate">{user?.email || 'No email'}</p>
                             </div>
                         </div>
                     </div>
@@ -127,11 +127,6 @@ const BuyerSidebar = ({ isOpen, onClose }) => {
                                                         {getIcon(item.icon)}
                                                     </svg>
                                                     <span className="flex-1">{item.name}</span>
-                                                    {item.badge && (
-                                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-primary text-white'}`}>
-                                                            {item.badge}
-                                                        </span>
-                                                    )}
                                                 </Link>
                                             </li>
                                         );
@@ -143,7 +138,10 @@ const BuyerSidebar = ({ isOpen, onClose }) => {
 
                     {/* Bottom Section */}
                     <div className="p-4 border-t border-border">
-                        <button className="w-full flex items-center gap-3 px-3 py-2.5 text-text-secondary hover:text-error hover:bg-error/5 rounded-lg transition-all cursor-pointer">
+                        <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-text-secondary hover:text-error hover:bg-error/5 rounded-lg transition-all cursor-pointer"
+                        >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                             </svg>

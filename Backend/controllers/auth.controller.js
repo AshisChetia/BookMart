@@ -90,7 +90,10 @@ export const login = async (req, res) => {
                 id: user._id,
                 fullname: user.fullname,
                 email: user.email,
-                role: user.role
+                phone: user.phone,
+                address: user.address,
+                role: user.role,
+                createdAt: user.createdAt
             }
         })
     } catch (error) {
@@ -99,5 +102,69 @@ export const login = async (req, res) => {
             success: false,
             message: "Server error during login"
         })
+    }
+}
+
+export const getMe = async (req, res) => {
+    try {
+        return res.status(200).json({
+            success: true,
+            user: {
+                id: req.user._id,
+                fullname: req.user.fullname,
+                email: req.user.email,
+                phone: req.user.phone,
+                address: req.user.address,
+                role: req.user.role,
+                createdAt: req.user.createdAt
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
+    }
+}
+
+export const updateProfile = async (req, res) => {
+    try {
+        const { fullname, phone, address } = req.body;
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Update only provided fields
+        if (fullname) user.fullname = fullname;
+        if (phone) user.phone = phone;
+        if (address) user.address = address;
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            user: {
+                id: user._id,
+                fullname: user.fullname,
+                email: user.email,
+                phone: user.phone,
+                address: user.address,
+                role: user.role,
+                createdAt: user.createdAt
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error during profile update"
+        });
     }
 }

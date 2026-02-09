@@ -5,26 +5,26 @@ import Book from "../models/book.model.js";
 
 export const getSellerDashboard = async (req, res) => {
     try {
-        
+
         const sellerId = req.user._id;
 
         const orderStats = await Order.aggregate([
-            
+
             {
                 $match: { seller: sellerId }
             },
-           
+
             {
                 $group: {
-                    _id: null,  
-                    totalOrders: { $sum: 1 },  
+                    _id: null,
+                    totalOrders: { $sum: 1 },
                     totalEarnings: {
                         $sum: {
-                            
+
                             $cond: [
-                                { $eq: ["$status", "delivered"] },  
-                                "$totalAmount",                     
-                                0                                  
+                                { $eq: ["$status", "delivered"] },
+                                "$totalAmount",
+                                0
                             ]
                         }
                     },
@@ -33,10 +33,10 @@ export const getSellerDashboard = async (req, res) => {
             }
         ]);
 
-       
+
         const totalBooks = await Book.countDocuments({ seller: sellerId });
 
-        
+
         const stats = orderStats[0] || {
             totalOrders: 0,
             totalEarnings: 0,
@@ -50,7 +50,7 @@ export const getSellerDashboard = async (req, res) => {
                 totalOrders: stats.totalOrders,
                 totalEarnings: stats.totalEarnings,
                 totalBooks: totalBooks,
-                totalCustomers: stats.uniqueCustomers.length 
+                totalCustomers: stats.uniqueCustomers.length
             }
         });
 
@@ -70,50 +70,50 @@ export const getTopSellingBooks = async (req, res) => {
         const sellerId = req.user._id;
 
         const topBooks = await Order.aggregate([
-            
+
             {
                 $match: { seller: sellerId }
             },
-            
+
             {
                 $group: {
-                    _id: "$book", 
+                    _id: "$book",
                     totalQuantitySold: { $sum: "$quantity" },
                     totalRevenue: { $sum: "$totalAmount" },
                     orderCount: { $sum: 1 }
                 }
             },
-            
+
             {
                 $sort: { totalQuantitySold: -1 }
             },
-           
+
             {
                 $limit: 5
             },
-           
+
             {
                 $lookup: {
-                    from: "books",        
-                    localField: "_id",    
-                    foreignField: "_id",  
-                    as: "bookDetails"    
+                    from: "books",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "bookDetails"
                 }
             },
-           
+
             {
                 $unwind: "$bookDetails"
             },
-            
+
             {
                 $project: {
-                    _id: 0,  
+                    _id: 0,
                     bookId: "$_id",
                     title: "$bookDetails.title",
                     author: "$bookDetails.author",
                     image: "$bookDetails.image",
                     price: "$bookDetails.price",
-                    totalQuantitySold: 1,  
+                    totalQuantitySold: 1,
                     totalRevenue: 1,
                     orderCount: 1
                 }
@@ -153,20 +153,20 @@ export const getSuggestedBooks = async (req, res) => {
             });
         }
 
-        
+
         const suggestedBooks = await Book.find({
-            category: { $in: sellerCategories }, 
-            seller: { $ne: sellerId }             
+            category: { $in: sellerCategories },
+            seller: { $ne: sellerId }
         })
-            .populate("seller", "fullname") 
-            .limit(10)                       
-            .select("title author price image category"); 
+            .populate("seller", "fullname")
+            .limit(10)
+            .select("title author price image category");
 
         return res.status(200).json({
             success: true,
             message: "Suggested books fetched successfully",
             suggestedBooks,
-            basedOnCategories: sellerCategories  
+            basedOnCategories: sellerCategories
         });
 
     } catch (error) {
@@ -185,15 +185,15 @@ export const getRecentOrders = async (req, res) => {
         const sellerId = req.user._id;
 
         const recentOrders = await Order.find({ seller: sellerId })
-            .sort({ createdAt: -1 })  
-            .limit(10)                 
+            .sort({ createdAt: -1 })
+            .limit(10)
             .populate({
                 path: "buyer",
-                select: "fullname email"  
+                select: "fullname email"
             })
             .populate({
                 path: "book",
-                select: "title price image" 
+                select: "title price image"
             });
 
         return res.status(200).json({
@@ -207,6 +207,43 @@ export const getRecentOrders = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to fetch recent orders"
+        });
+    }
+};
+
+export const getCategoryStats = async (req, res) => {
+    try {
+        // Get all distinct categories with book counts
+        const categoryStats = await Book.aggregate([
+            {
+                $group: {
+                    _id: { $toLower: "$category" }, // Normalize case
+                    count: { $sum: 1 },
+                    originalName: { $first: "$category" } // Keep one original casing for display
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    name: "$originalName",
+                    value: "$_id",
+                    count: 1
+                }
+            },
+            {
+                $sort: { count: -1 }
+            }
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            categories: categoryStats
+        });
+    } catch (error) {
+        console.error("Category Stats Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch category statistics"
         });
     }
 };

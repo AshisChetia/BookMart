@@ -4,12 +4,16 @@ import {
     getSellerDashboard,
     getTopSellingBooks,
     getSuggestedBooks,
-    getRecentOrders
+    getRecentOrders,
+    getCategoryStats
 } from "../controllers/analytics.controller.js";
 
 const router = express.Router();
 
-// All routes require authentication AND seller role
+// Public routes
+router.get('/categories/stats', getCategoryStats);
+
+// Protected routes (Seller only)
 router.get('/seller/dashboard', isAuthenticated, isSeller, getSellerDashboard);
 router.get('/seller/top-books', isAuthenticated, isSeller, getTopSellingBooks);
 router.get('/seller/suggestions', isAuthenticated, isSeller, getSuggestedBooks);

@@ -1,49 +1,98 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { assets } from '../../assets/assets';
 import BuyerSidebar from '../../components/buyer/BuyerSidebar';
 import BuyerHeader from '../../components/buyer/BuyerHeader';
+import { wishlistAPI, cartAPI } from '../../services/api';
 
 const Wishlist = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [wishlistItems, setWishlistItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [actionLoading, setActionLoading] = useState(null);
 
-    // Dummy wishlist data - in real app would come from API/state
-    const [wishlistItems, setWishlistItems] = useState([
-        { id: 1, title: "The Psychology of Money", author: "Morgan Housel", price: 299, originalPrice: 450, image: assets.landing.featured, category: "Non-Fiction", rating: 4.8, inStock: true },
-        { id: 2, title: "Atomic Habits", author: "James Clear", price: 349, originalPrice: 499, image: assets.categories.selfHelp, category: "Self-Help", rating: 4.9, inStock: true },
-        { id: 3, title: "The Silent Patient", author: "Alex Michaelides", price: 275, originalPrice: 399, image: assets.categories.thriller, category: "Thriller", rating: 4.6, inStock: true },
-        { id: 4, title: "Dune", author: "Frank Herbert", price: 399, originalPrice: 550, image: assets.categories.thriller, category: "Science Fiction", rating: 4.8, inStock: false },
-        { id: 5, title: "Where the Crawdads Sing", author: "Delia Owens", price: 320, originalPrice: 450, image: assets.categories.fiction, category: "Fiction", rating: 4.7, inStock: true },
-    ]);
+    // Fetch wishlist on mount
+    useEffect(() => {
+        fetchWishlist();
+    }, []);
 
-    const handleRemove = (id) => {
-        setWishlistItems(prev => prev.filter(item => item.id !== id));
+    const fetchWishlist = async () => {
+        try {
+            setLoading(true);
+            const response = await wishlistAPI.getWishlist();
+            if (response.data.success) {
+                setWishlistItems(response.data.wishlist.books || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch wishlist:', err);
+            setError('Failed to load wishlist');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleMoveToCart = (id) => {
-        // In real app, add to cart and remove from wishlist
-        console.log('Moving to cart:', id);
-        setWishlistItems(prev => prev.filter(item => item.id !== id));
+    const handleRemove = async (bookId) => {
+        try {
+            setActionLoading(bookId);
+            const response = await wishlistAPI.removeFromWishlist(bookId);
+            if (response.data.success) {
+                setWishlistItems(response.data.wishlist.books || []);
+            }
+        } catch (err) {
+            console.error('Failed to remove from wishlist:', err);
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleMoveToCart = async (bookId) => {
+        try {
+            setActionLoading(bookId);
+            // Add to cart
+            await cartAPI.addToCart(bookId, 1);
+            // Remove from wishlist
+            const response = await wishlistAPI.removeFromWishlist(bookId);
+            if (response.data.success) {
+                setWishlistItems(response.data.wishlist.books || []);
+            }
+        } catch (err) {
+            console.error('Failed to move to cart:', err);
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    // Helper to get book image or placeholder
+    const getBookImage = (book) => {
+        if (book?.image && (book.image.startsWith('http://') || book.image.startsWith('https://'))) {
+            return book.image;
+        }
+        return assets.landing.featured;
+    };
+
+    const handleImageError = (e) => {
+        e.target.src = assets.landing.featured;
     };
 
     const filteredItems = wishlistItems.filter(item =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.author.toLowerCase().includes(searchQuery.toLowerCase())
+        item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.author?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
-        <div className="min-h-screen bg-background font-sans flex">
+        <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
             <BuyerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            <div className="flex-1 flex flex-col min-h-screen">
+            <div className="flex-1 flex flex-col min-h-screen min-w-0">
                 <BuyerHeader
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
                     onMenuClick={() => setSidebarOpen(true)}
                 />
 
-                <main className="flex-1 px-4 md:px-8 py-6 md:py-8 overflow-y-auto">
+                <main className="flex-1 px-3 sm:px-4 md:px-8 py-4 sm:py-6 md:py-8 overflow-y-auto overflow-x-hidden">
                     {/* Page Header */}
                     <section className="mb-8">
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -70,81 +119,86 @@ const Wishlist = () => {
                         </div>
                     </section>
 
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    )}
+
+                    {/* Error State */}
+                    {error && !loading && (
+                        <div className="text-center py-12 text-red-500">
+                            {error}
+                            <button onClick={fetchWishlist} className="ml-2 text-primary hover:underline">
+                                Retry
+                            </button>
+                        </div>
+                    )}
+
                     {/* Wishlist Items */}
-                    {filteredItems.length > 0 ? (
+                    {!loading && !error && filteredItems.length > 0 && (
                         <section className="mb-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {filteredItems.map((item) => (
-                                    <div key={item.id} className="bg-background-alt border border-border rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
+                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                                {filteredItems.map((book) => (
+                                    <div key={book._id} className="bg-background-alt border border-border rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
                                         {/* Book Image */}
-                                        <Link to={`/buyer/book/${item.id}`} state={{ from: 'wishlist' }} className="block relative aspect-[3/4] overflow-hidden">
+                                        <Link to={`/buyer/book/${book._id}`} state={{ from: 'wishlist' }} className="block relative aspect-[3/4] overflow-hidden">
                                             <img
-                                                src={item.image}
-                                                alt={item.title}
+                                                src={getBookImage(book)}
+                                                alt={book.title}
+                                                onError={handleImageError}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                             />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                                            {/* Rating badge */}
-                                            <div className="absolute top-3 left-3 px-2 py-1 bg-white/95 backdrop-blur-sm rounded-lg text-xs font-medium flex items-center gap-1">
-                                                <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                </svg>
-                                                {item.rating}
-                                            </div>
-
-                                            {/* Discount badge */}
-                                            <div className="absolute top-3 right-3 px-2 py-1 bg-green-500 text-white rounded-lg text-xs font-bold">
-                                                {Math.round((1 - item.price / item.originalPrice) * 100)}% OFF
-                                            </div>
-
-                                            {/* Out of stock overlay */}
-                                            {!item.inStock && (
-                                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                    <span className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-full">Out of Stock</span>
-                                                </div>
+                                            {/* In Stock Badge */}
+                                            {book.stock > 0 ? (
+                                                <span className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                                                    IN STOCK
+                                                </span>
+                                            ) : (
+                                                <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                                                    OUT OF STOCK
+                                                </span>
                                             )}
-
-                                            {/* Remove button */}
-                                            <button
-                                                onClick={(e) => { e.preventDefault(); handleRemove(item.id); }}
-                                                className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 cursor-pointer z-10"
-                                                title="Remove from wishlist"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
                                         </Link>
 
                                         {/* Book Info */}
-                                        <div className="p-4">
-                                            <span className="text-[10px] uppercase tracking-wider text-text-muted">{item.category}</span>
-                                            <Link to={`/buyer/book/${item.id}`} state={{ from: 'wishlist' }}>
-                                                <h3 className="text-sm font-medium text-text-primary mt-1 line-clamp-1 hover:text-primary transition-colors">{item.title}</h3>
+                                        <div className="p-3">
+                                            <span className="text-[10px] uppercase tracking-wider text-text-muted">{book.category}</span>
+                                            <Link to={`/buyer/book/${book._id}`} state={{ from: 'wishlist' }}>
+                                                <h3 className="text-sm font-medium text-text-primary mt-1 line-clamp-1 hover:text-primary transition-colors">{book.title}</h3>
                                             </Link>
-                                            <p className="text-xs text-text-secondary mt-0.5">{item.author}</p>
+                                            <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">{book.author}</p>
 
-                                            <div className="flex items-center gap-2 mt-3">
-                                                <span className="text-lg font-bold text-primary">₹{item.price}</span>
-                                                <span className="text-sm text-text-muted line-through">₹{item.originalPrice}</span>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="text-base font-bold text-primary">₹{book.price}</span>
+                                                <span className="text-xs text-text-muted">
+                                                    by {book.seller?.fullname || 'Unknown'}
+                                                </span>
                                             </div>
 
-                                            {/* Action Buttons */}
-                                            <div className="flex gap-2 mt-4">
+                                            {/* Actions */}
+                                            <div className="flex gap-2 mt-3 pt-3 border-t border-border">
                                                 <button
-                                                    onClick={() => handleMoveToCart(item.id)}
-                                                    disabled={!item.inStock}
-                                                    className="flex-1 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                    onClick={() => handleMoveToCart(book._id)}
+                                                    disabled={actionLoading === book._id || book.stock <= 0}
+                                                    className="flex-1 py-2 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                                                    </svg>
-                                                    Add to Cart
+                                                    {actionLoading === book._id ? (
+                                                        <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : (
+                                                        <>
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                                            </svg>
+                                                            Add to Cart
+                                                        </>
+                                                    )}
                                                 </button>
                                                 <button
-                                                    onClick={() => handleRemove(item.id)}
-                                                    className="w-10 h-10 border border-border rounded-lg flex items-center justify-center text-text-secondary hover:text-red-500 hover:border-red-500 transition-colors cursor-pointer"
+                                                    onClick={() => handleRemove(book._id)}
+                                                    disabled={actionLoading === book._id}
+                                                    className="p-2 text-text-secondary hover:text-red-500 border border-border rounded-lg hover:border-red-500 transition-colors cursor-pointer disabled:opacity-50"
                                                     title="Remove"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,8 +211,10 @@ const Wishlist = () => {
                                 ))}
                             </div>
                         </section>
-                    ) : (
-                        /* Empty State */
+                    )}
+
+                    {/* Empty State */}
+                    {!loading && !error && wishlistItems.length === 0 && (
                         <section className="mb-8">
                             <div className="text-center py-16">
                                 <div className="w-20 h-20 mx-auto mb-6 bg-background-alt rounded-full flex items-center justify-center">
@@ -167,7 +223,7 @@ const Wishlist = () => {
                                     </svg>
                                 </div>
                                 <h3 className="text-xl font-medium text-text-primary mb-2">Your wishlist is empty</h3>
-                                <p className="text-text-secondary mb-6">Save items you love to your wishlist and buy them later.</p>
+                                <p className="text-text-secondary mb-6">Start saving books you love!</p>
                                 <Link
                                     to="/buyer/home"
                                     className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-medium rounded-full hover:bg-primary/90 transition-colors"
@@ -181,23 +237,12 @@ const Wishlist = () => {
                         </section>
                     )}
 
-                    {/* Recommendations */}
-                    {wishlistItems.length > 0 && (
+                    {/* No Search Results */}
+                    {!loading && !error && wishlistItems.length > 0 && filteredItems.length === 0 && (
                         <section className="mb-8">
-                            <h2 className="text-lg font-medium text-text-primary mb-4">You might also like</h2>
-                            <div className="flex gap-3 overflow-x-auto pb-2">
-                                <Link to="/buyer/categories/fiction" className="px-4 py-2 bg-background-alt border border-border rounded-full text-sm text-text-secondary hover:border-primary hover:text-primary transition-colors whitespace-nowrap">
-                                    Fiction
-                                </Link>
-                                <Link to="/buyer/categories/self-help" className="px-4 py-2 bg-background-alt border border-border rounded-full text-sm text-text-secondary hover:border-primary hover:text-primary transition-colors whitespace-nowrap">
-                                    Self-Help
-                                </Link>
-                                <Link to="/buyer/categories/thriller" className="px-4 py-2 bg-background-alt border border-border rounded-full text-sm text-text-secondary hover:border-primary hover:text-primary transition-colors whitespace-nowrap">
-                                    Thriller
-                                </Link>
-                                <Link to="/buyer/new" className="px-4 py-2 bg-background-alt border border-border rounded-full text-sm text-text-secondary hover:border-primary hover:text-primary transition-colors whitespace-nowrap">
-                                    New Arrivals
-                                </Link>
+                            <div className="text-center py-16">
+                                <h3 className="text-xl font-medium text-text-primary mb-2">No matching books</h3>
+                                <p className="text-text-secondary">Try a different search term</p>
                             </div>
                         </section>
                     )}

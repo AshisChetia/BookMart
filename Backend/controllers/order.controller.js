@@ -34,6 +34,9 @@ export const getMyOrder = async (req, res) => {
     try {
 
         const orders = await Order.find({ buyer: req.user._id })
+            .populate('book', 'title author image price')
+            .populate('seller', 'fullname email')
+            .sort({ createdAt: -1 });
 
         if (orders.length === 0) {
             return res.status(404).json({
@@ -59,7 +62,10 @@ export const getMyOrder = async (req, res) => {
 
 export const getSellerOrders = async (req, res) => {
     try {
-        const orders = await Order.find({ seller: req.user._id });
+        const orders = await Order.find({ seller: req.user._id })
+            .populate('book', 'title author image price')
+            .populate('buyer', 'fullname email phone address')
+            .sort({ createdAt: -1 });
 
         if (orders.length === 0) {
             return res.status(404).json({

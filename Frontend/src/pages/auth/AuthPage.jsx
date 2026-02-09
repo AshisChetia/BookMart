@@ -1,16 +1,76 @@
 import { useState } from 'react';
 import { assets } from '../../assets/assets';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const AuthPage = () => {
     const [searchParams] = useSearchParams();
     const mode = searchParams.get('mode');
+    const { login, signup } = useAuth();
 
     const [role, setRole] = useState(null); // 'reader' or 'seller'
     const [isLogin, setIsLogin] = useState(mode !== 'signup');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const toggleMode = () => setIsLogin(!isLogin);
-    const resetRole = () => setRole(null);
+    // Form state
+    const [formData, setFormData] = useState({
+        fullname: '',
+        email: '',
+        phone: '',
+        address: '',
+        password: '',
+    });
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        setError('');
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+
+        try {
+            if (isLogin) {
+                const result = await login(formData.email, formData.password);
+                if (!result.success) {
+                    setError(result.message);
+                }
+            } else {
+                const signupData = {
+                    ...formData,
+                    role: role === 'seller' ? 'seller' : 'user'
+                };
+                const result = await signup(signupData);
+                if (result.success) {
+                    // Auto login after signup
+                    const loginResult = await login(formData.email, formData.password);
+                    if (!loginResult.success) {
+                        setError('Account created! Please log in.');
+                        setIsLogin(true);
+                    }
+                } else {
+                    setError(result.message);
+                }
+            }
+        } catch (err) {
+            setError('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleMode = () => {
+        setIsLogin(!isLogin);
+        setError('');
+    };
+    const resetRole = () => {
+        setRole(null);
+        setError('');
+    };
 
     return (
         <div className="min-h-screen bg-background flex">
@@ -120,14 +180,24 @@ const AuthPage = () => {
                                 </h1>
                             </div>
 
-                            <form className="space-y-6">
+                            {error && (
+                                <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                                    {error}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmit} className="space-y-6">
                                 {!isLogin && (
                                     <>
                                         <div className="space-y-1">
                                             <label className="text-xs uppercase tracking-wider text-text-secondary font-medium">Full Name</label>
                                             <input
                                                 type="text"
+                                                name="fullname"
+                                                value={formData.fullname}
+                                                onChange={handleInputChange}
                                                 placeholder="John Doe"
+                                                required={!isLogin}
                                                 className="w-full bg-transparent border-b border-border focus:border-primary py-3 outline-none transition-colors text-text-primary placeholder:text-text-muted/50"
                                             />
                                         </div>
@@ -137,7 +207,11 @@ const AuthPage = () => {
                                                 <label className="text-xs uppercase tracking-wider text-text-secondary font-medium">Phone Number</label>
                                                 <input
                                                     type="tel"
-                                                    placeholder="+1 (555) 000-0000"
+                                                    name="phone"
+                                                    value={formData.phone}
+                                                    onChange={handleInputChange}
+                                                    placeholder="+91 98765 43210"
+                                                    required={!isLogin}
                                                     className="w-full bg-transparent border-b border-border focus:border-primary py-3 outline-none transition-colors text-text-primary placeholder:text-text-muted/50"
                                                 />
                                             </div>
@@ -145,7 +219,11 @@ const AuthPage = () => {
                                                 <label className="text-xs uppercase tracking-wider text-text-secondary font-medium">Address</label>
                                                 <input
                                                     type="text"
-                                                    placeholder="City, Country"
+                                                    name="address"
+                                                    value={formData.address}
+                                                    onChange={handleInputChange}
+                                                    placeholder="City, State"
+                                                    required={!isLogin}
                                                     className="w-full bg-transparent border-b border-border focus:border-primary py-3 outline-none transition-colors text-text-primary placeholder:text-text-muted/50"
                                                 />
                                             </div>
@@ -157,7 +235,11 @@ const AuthPage = () => {
                                     <label className="text-xs uppercase tracking-wider text-text-secondary font-medium">Email Address</label>
                                     <input
                                         type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleInputChange}
                                         placeholder="name@example.com"
+                                        required
                                         className="w-full bg-transparent border-b border-border focus:border-primary py-3 outline-none transition-colors text-text-primary placeholder:text-text-muted/50"
                                     />
                                 </div>
@@ -166,13 +248,23 @@ const AuthPage = () => {
                                     <label className="text-xs uppercase tracking-wider text-text-secondary font-medium">Password</label>
                                     <input
                                         type="password"
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleInputChange}
                                         placeholder="••••••••"
+                                        required
                                         className="w-full bg-transparent border-b border-border focus:border-primary py-3 outline-none transition-colors text-text-primary placeholder:text-text-muted/50"
                                     />
                                 </div>
 
-                                <button className="w-full bg-text-primary text-background py-4 font-medium hover:bg-primary transition-colors mt-8 cursor-pointer relative overflow-hidden group">
-                                    <span className="relative z-10">{isLogin ? 'Sign In' : 'Join BookMart'}</span>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full bg-text-primary text-background py-4 font-medium hover:bg-primary transition-colors mt-8 cursor-pointer relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <span className="relative z-10">
+                                        {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Join BookMart')}
+                                    </span>
                                     <span className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                                 </button>
                             </form>

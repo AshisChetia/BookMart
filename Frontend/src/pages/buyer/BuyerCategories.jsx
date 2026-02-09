@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { assets } from '../../assets/assets';
+import { analyticsAPI } from '../../services/api';
 import BuyerSidebar from '../../components/buyer/BuyerSidebar';
 import BuyerHeader from '../../components/buyer/BuyerHeader';
 
@@ -8,84 +9,115 @@ const BuyerCategories = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    const categories = [
+    const [categories, setCategories] = useState([
         {
             id: 1,
             name: 'Fiction',
             description: 'Explore imaginative narratives and storytelling at its finest',
-            count: 2340,
+            count: 0,
             image: assets.categories.fiction,
-            featured: ['The Alchemist', 'Where the Crawdads Sing', '1984']
         },
         {
             id: 2,
             name: 'Non-Fiction',
             description: 'Real stories, biographies, and factual explorations',
-            count: 1820,
+            count: 0,
             image: assets.categories.nonFiction,
-            featured: ['Atomic Habits', 'Sapiens', 'Educated']
         },
         {
             id: 3,
             name: 'Self-Help',
             description: 'Transform your life with practical wisdom and guidance',
-            count: 1150,
+            count: 0,
             image: assets.categories.selfHelp,
-            featured: ['The Psychology of Money', 'Deep Work', 'Mindset']
         },
         {
             id: 4,
             name: 'Thriller',
             description: 'Edge-of-your-seat suspense and mystery',
-            count: 890,
+            count: 0,
             image: assets.categories.thriller,
-            featured: ['Gone Girl', 'The Silent Patient', 'The Girl on the Train']
         },
         {
             id: 5,
             name: 'Romance',
             description: 'Love stories that warm the heart',
-            count: 1560,
+            count: 0,
             image: assets.categories.fiction,
-            featured: ['Pride and Prejudice', 'The Notebook', 'Outlander']
         },
         {
             id: 6,
             name: 'Science Fiction',
             description: 'Journey through futures and alternate realities',
-            count: 780,
+            count: 0,
             image: assets.categories.thriller,
-            featured: ['Dune', 'Foundation', 'Neuromancer']
         },
         {
             id: 7,
             name: 'Biography',
             description: 'Inspiring life stories of remarkable individuals',
-            count: 620,
+            count: 0,
             image: assets.categories.nonFiction,
-            featured: ['Steve Jobs', 'Becoming', 'Einstein']
         },
         {
             id: 8,
-            name: 'Academic',
-            description: 'Textbooks and educational resources',
-            count: 450,
-            image: assets.categories.selfHelp,
-            featured: ['Physics 101', 'Economics Principles', 'Medical Texts']
+            name: 'History',
+            description: 'Journey through time and past events',
+            count: 0,
+            image: assets.categories.nonFiction,
         },
-    ];
+        {
+            id: 9,
+            name: 'Business',
+            description: 'Insights for professional growth and success',
+            count: 0,
+            image: assets.categories.selfHelp,
+        },
+        {
+            id: 10,
+            name: 'Children',
+            description: 'Stories and learning for young minds',
+            count: 0,
+            image: assets.categories.fiction,
+        }
+    ]);
+
+    useEffect(() => {
+        const fetchCategoryStats = async () => {
+            try {
+                const response = await analyticsAPI.getCategoryStats();
+                if (response.data.success) {
+                    const stats = response.data.categories;
+
+                    setCategories(prevCategories =>
+                        prevCategories.map(cat => {
+                            const stat = stats.find(s => s.name.toLowerCase() === cat.name.toLowerCase());
+                            return {
+                                ...cat,
+                                count: stat ? stat.count : 0
+                            };
+                        })
+                    );
+                }
+            } catch (error) {
+                console.error("Failed to fetch category stats:", error);
+            }
+        };
+
+        fetchCategoryStats();
+    }, []);
 
     const filteredCategories = categories.filter(cat =>
         cat.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
-        <div className="min-h-screen bg-background font-sans flex">
+        <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
             {/* Sidebar */}
             <BuyerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-h-screen">
+            <div className="flex-1 flex flex-col min-h-screen min-w-0">
                 {/* Header */}
                 <BuyerHeader
                     searchQuery={searchQuery}
@@ -94,7 +126,7 @@ const BuyerCategories = () => {
                 />
 
                 {/* Main Content */}
-                <main className="flex-1 px-4 md:px-8 py-6 md:py-8 overflow-y-auto">
+                <main className="flex-1 px-3 sm:px-4 md:px-8 py-4 sm:py-6 md:py-8 overflow-y-auto overflow-x-hidden">
                     {/* Page Header */}
                     <section className="mb-10">
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -158,7 +190,7 @@ const BuyerCategories = () => {
                             </h2>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                             {filteredCategories.map((category) => (
                                 <Link
                                     key={category.id}
