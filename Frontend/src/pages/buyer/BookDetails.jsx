@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams, useLocation } from 'react-router-dom';
+import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { assets } from '../../assets/assets';
 import BuyerSidebar from '../../components/buyer/BuyerSidebar';
 import BuyerHeader from '../../components/buyer/BuyerHeader';
-import { bookAPI } from '../../services/api';
+import { bookAPI, cartAPI, wishlistAPI, orderAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 const BookDetails = () => {
     const { bookId } = useParams();
+    const navigate = useNavigate();
     const location = useLocation();
+    const { user } = useAuth();
+
     const [searchQuery, setSearchQuery] = useState('');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [quantity, setQuantity] = useState(1);
@@ -15,6 +20,10 @@ const BookDetails = () => {
     const [book, setBook] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const [actionLoading, setActionLoading] = useState(false);
+    const [showBuyNowModal, setShowBuyNowModal] = useState(false);
+    const [selectedAddress, setSelectedAddress] = useState(null);
 
     // Get source info from navigation state
     const sourceInfo = location.state || { from: 'home' };
@@ -40,11 +49,73 @@ const BookDetails = () => {
         }
     }, [bookId]);
 
+    useEffect(() => {
+        if (user?.addresses?.length > 0 && !selectedAddress) {
+            const defaultAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
+            setSelectedAddress(defaultAddr);
+        }
+    }, [user, selectedAddress]);
+
     const handleQuantityChange = (delta) => {
         const stock = book?.stock || 10;
         const newQty = quantity + delta;
         if (newQty >= 1 && newQty <= stock) {
             setQuantity(newQty);
+        }
+    };
+
+    const handleAddToCart = async () => {
+        try {
+            setActionLoading(true);
+            await cartAPI.addToCart(bookId, quantity);
+            toast.success('Added to cart!');
+        } catch (err) {
+            console.error('Failed to add to cart:', err);
+            toast.error('Failed to add to cart');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleAddToWishlist = async () => {
+        try {
+            setActionLoading(true);
+            await wishlistAPI.addToWishlist(bookId);
+            toast.success('Added to wishlist!');
+        } catch (err) {
+            console.error('Failed to add to wishlist:', err);
+            toast.error('Failed to add to wishlist');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleBuyNow = async () => {
+        if (!selectedAddress) {
+            toast.error('Please select a shipping address');
+            return;
+        }
+
+        try {
+            setActionLoading(true);
+            const fullAddressString = `${selectedAddress.addressLine}, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.pincode}. Ph: ${selectedAddress.phone}`;
+
+            await orderAPI.createOrder({
+                seller: book.seller._id,
+                book: book._id,
+                quantity: quantity,
+                totalAmount: book.price * quantity,
+                shippingAddress: fullAddressString
+            });
+
+            toast.success('Order placed successfully!');
+            navigate('/buyer/orders');
+        } catch (err) {
+            console.error('Order failed:', err);
+            toast.error('Failed to place order');
+        } finally {
+            setActionLoading(false);
+            setShowBuyNowModal(false);
         }
     };
 
@@ -276,17 +347,31 @@ const BookDetails = () => {
 
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row gap-3 mb-8">
-                                <button className="flex-1 bg-primary text-white py-3 px-6 rounded-xl font-medium hover:bg-primary/90 transition-colors cursor-pointer flex items-center justify-center gap-2">
+                                <button
+                                    onClick={handleAddToCart}
+                                    disabled={actionLoading || book.stock === 0}
+                                    className="flex-1 bg-primary text-white py-3 px-6 rounded-xl font-medium hover:bg-primary/90 transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                                     </svg>
-                                    Add to Cart
+                                    {actionLoading ? 'Adding...' : 'Add to Cart'}
                                 </button>
-                                <button className="flex-1 border border-primary text-primary py-3 px-6 rounded-xl font-medium hover:bg-primary/10 transition-colors cursor-pointer flex items-center justify-center gap-2">
+                                <button
+                                    onClick={() => setShowBuyNowModal(true)}
+                                    disabled={actionLoading || book.stock === 0}
+                                    className="flex-1 bg-background-alt border border-primary text-primary py-3 px-6 rounded-xl font-medium hover:bg-primary/5 transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    Buy Now
+                                </button>
+                                <button
+                                    onClick={handleAddToWishlist}
+                                    disabled={actionLoading}
+                                    className="p-3 border border-border text-text-secondary rounded-xl hover:bg-background-alt transition-colors cursor-pointer"
+                                >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                     </svg>
-                                    Add to Wishlist
                                 </button>
                             </div>
 
@@ -359,6 +444,66 @@ const BookDetails = () => {
                     </section>
                 </main>
             </div>
+
+            {/* Buy Now Address Picker Modal */}
+            {showBuyNowModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-background border border-border rounded-3xl w-full max-w-md shadow-2xl overflow-hidden scale-in">
+                        <div className="p-6 border-b border-border flex items-center justify-between">
+                            <h3 className="text-lg font-light italic text-text-primary">Checkout <span className="font-black text-primary">Now</span></h3>
+                            <button onClick={() => setShowBuyNowModal(false)} className="p-2 hover:bg-error/10 hover:text-error rounded-full transition-all">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <div className="mb-6 p-4 bg-background-alt rounded-2xl border border-border">
+                                <div className="flex items-center justify-between mb-3 text-xs font-black uppercase tracking-widest text-text-muted">
+                                    <span>Shipping to</span>
+                                    <Link to="/buyer/profile" className="text-primary hover:underline">Manage</Link>
+                                </div>
+                                {user?.addresses?.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {user.addresses.map((addr) => (
+                                            <div
+                                                key={addr._id}
+                                                onClick={() => setSelectedAddress(addr)}
+                                                className={`p-3 rounded-xl border cursor-pointer transition-all ${selectedAddress?._id === addr._id ? 'border-primary bg-primary/5' : 'border-border/50 hover:border-primary/30'}`}
+                                            >
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs font-bold text-text-primary">{addr.label}</span>
+                                                    {addr.isDefault && <span className="text-[8px] bg-primary/10 text-primary px-1 py-0.5 rounded font-black">Default</span>}
+                                                </div>
+                                                <p className="text-[10px] text-text-secondary line-clamp-1 italic">{addr.addressLine}, {addr.city}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4">
+                                        <p className="text-xs text-text-muted mb-3">No addresses found</p>
+                                        <Link to="/buyer/profile" className="text-xs text-primary font-bold hover:underline">Add one in Profile</Link>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-primary/5 rounded-2xl p-4 mb-6 border border-primary/10">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs text-text-secondary">Order Total ({quantity} {quantity === 1 ? 'copy' : 'copies'})</span>
+                                    <span className="text-lg font-black text-primary">₹{book.price * quantity}</span>
+                                </div>
+                                <p className="text-[10px] text-text-muted italic">+ Home delivery charges may apply</p>
+                            </div>
+
+                            <button
+                                onClick={handleBuyNow}
+                                disabled={actionLoading || !selectedAddress}
+                                className="w-full py-4 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-xl hover:shadow-xl transition-all shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {actionLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Confirm Purchase'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -5,13 +5,17 @@ import {
     getTopSellingBooks,
     getSuggestedBooks,
     getRecentOrders,
-    getCategoryStats
+    getCategoryStats,
+    getSmartSuggestions
 } from "../controllers/analytics.controller.js";
 
 const router = express.Router();
 
 // Public routes
 router.get('/categories/stats', getCategoryStats);
+
+// Protected routes (Authenticated Users)
+router.get('/suggestions', isAuthenticated, getSmartSuggestions);
 
 // Protected routes (Seller only)
 router.get('/seller/dashboard', isAuthenticated, isSeller, getSellerDashboard);

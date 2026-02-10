@@ -1,14 +1,59 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { assets } from '../assets/assets';
+import { analyticsAPI } from '../services/api';
 
 const LandingPage = () => {
     const [scrollY, setScrollY] = useState(0);
+    const [showAllCategories, setShowAllCategories] = useState(false);
+    const navigate = useNavigate();
+
+    const [categories, setCategories] = useState([
+        { name: 'Fiction', count: 0, image: assets.categories.fiction },
+        { name: 'Non-Fiction', count: 0, image: assets.categories.nonFiction },
+        { name: 'Self-Help', count: 0, image: assets.categories.selfHelp },
+        { name: 'Thriller', count: 0, image: assets.categories.thriller },
+        { name: 'Romance', count: 0, image: assets.categories.fiction },
+        { name: 'Science Fiction', count: 0, image: assets.categories.thriller },
+        { name: 'Biography', count: 0, image: assets.categories.nonFiction },
+        { name: 'History', count: 0, image: assets.categories.nonFiction },
+        { name: 'Business', count: 0, image: assets.categories.selfHelp },
+        { name: 'Children', count: 0, image: assets.categories.fiction }
+    ]);
 
     useEffect(() => {
         const handleScroll = () => setScrollY(window.scrollY);
         window.addEventListener('scroll', handleScroll);
+
+        // Reset state on mount to ensure clean state when navigating back
+        setShowAllCategories(false);
+
+        // Fetch category stats
+        const fetchCategoryStats = async () => {
+            try {
+                const response = await analyticsAPI.getCategoryStats();
+                if (response.data.success) {
+                    const stats = response.data.categories;
+
+                    setCategories(prevCategories =>
+                        prevCategories.map(cat => {
+                            const stat = stats.find(s => s.name.toLowerCase() === cat.name.toLowerCase());
+                            return {
+                                ...cat,
+                                count: stat ? stat.count : 0
+                            };
+                        })
+                    );
+                }
+            } catch (error) {
+                console.error("Failed to fetch category stats:", error);
+            }
+        };
+
+        fetchCategoryStats();
+
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
@@ -60,7 +105,10 @@ const LandingPage = () => {
 
                         {/* CTA Button */}
                         <div className="pt-4">
-                            <button className="group relative px-10 py-5 bg-text-primary text-background font-medium overflow-hidden cursor-pointer">
+                            <button
+                                onClick={() => navigate('/auth?mode=signup&role=reader')}
+                                className="group relative px-10 py-5 bg-text-primary text-background font-medium overflow-hidden cursor-pointer"
+                            >
                                 <span className="relative z-10 flex items-center gap-3">
                                     Start Exploring
                                     <svg className="w-5 h-5 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,21 +245,25 @@ const LandingPage = () => {
                                 Browse by <span className="font-black italic">Genre</span>
                             </h2>
                         </div>
-                        <button className="text-text-primary font-medium flex items-center gap-2 group cursor-pointer">
-                            View All
-                            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        <button
+                            onClick={() => setShowAllCategories(prev => !prev)}
+                            className="text-text-primary font-medium flex items-center gap-2 group cursor-pointer select-none"
+                            type="button"
+                        >
+                            {showAllCategories ? "View Less" : "View All"}
+                            <svg
+                                className={`w-4 h-4 transition-transform duration-300 ${showAllCategories ? 'rotate-180' : 'group-hover:translate-x-1'}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
                     </div>
 
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {[
-                            { name: "Fiction", count: "2,340", image: assets.categories.fiction },
-                            { name: "Non-Fiction", count: "1,820", image: assets.categories.nonFiction },
-                            { name: "Self-Help", count: "1,150", image: assets.categories.selfHelp },
-                            { name: "Thriller", count: "890", image: assets.categories.thriller },
-                        ].map((cat, i) => (
+                        {categories.slice(0, showAllCategories ? undefined : 4).map((cat, i) => (
                             <div key={i} className="group relative aspect-[4/5] bg-text-primary rounded-lg overflow-hidden cursor-pointer">
                                 <div className="absolute inset-0">
                                     <img
@@ -223,16 +275,10 @@ const LandingPage = () => {
                                 </div>
 
                                 <div className="absolute bottom-0 left-0 right-0 p-8 z-10">
-                                    <p className="text-gray-300 text-sm font-light tracking-wide">{cat.count} books</p>
+                                    <p className="text-gray-300 text-sm font-light tracking-wide">{cat.count.toLocaleString()} books</p>
                                     <h3 className="text-white text-3xl font-serif mt-2 group-hover:text-primary-light transition-colors">
                                         {cat.name}
                                     </h3>
-                                </div>
-
-                                <div className="absolute top-6 right-6 w-10 h-10 border border-white/20 rounded-full flex items-center justify-center text-white/60 group-hover:border-white group-hover:text-white transition-all backdrop-blur-sm">
-                                    <svg className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 17L17 7M17 7H7M17 7v10" />
-                                    </svg>
                                 </div>
                             </div>
                         ))}
@@ -259,12 +305,18 @@ const LandingPage = () => {
                         Whether you're looking to discover your next favorite read or share your collection with the world.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-12">
-                        <button className="group relative px-12 py-5 bg-background text-text-primary font-medium overflow-hidden cursor-pointer">
+                        <button
+                            onClick={() => navigate('/auth?mode=signup')}
+                            className="group relative px-12 py-5 bg-background text-text-primary font-medium overflow-hidden cursor-pointer"
+                        >
                             <span className="relative z-10">Create Account</span>
                             <span className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                             <span className="absolute inset-0 z-10 flex items-center justify-center text-background opacity-0 group-hover:opacity-100 transition-opacity duration-300">Create Account</span>
                         </button>
-                        <button className="px-12 py-5 border border-background/30 text-background font-medium hover:bg-background/10 transition-colors cursor-pointer">
+                        <button
+                            onClick={() => navigate('/auth?mode=signup&role=seller')}
+                            className="px-12 py-5 border border-background/30 text-background font-medium hover:bg-background/10 transition-colors cursor-pointer"
+                        >
                             Become a Seller
                         </button>
                     </div>

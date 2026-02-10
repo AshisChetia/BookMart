@@ -43,6 +43,11 @@ export const authAPI = {
     login: (data) => api.post('/auth/login', data),
     getMe: () => api.get('/auth/me'),
     updateProfile: (data) => api.put('/auth/profile', data),
+    // Address management
+    addAddress: (data) => api.post('/auth/address', data),
+    updateAddress: (id, data) => api.put(`/auth/address/${id}`, data),
+    deleteAddress: (id) => api.delete(`/auth/address/${id}`),
+    setDefaultAddress: (id) => api.put(`/auth/address/${id}/default`),
 };
 
 // ============ BOOK APIs ============
@@ -75,6 +80,7 @@ export const orderAPI = {
 export const analyticsAPI = {
     getSellerAnalytics: () => api.get('/seller/analytics'),
     getCategoryStats: () => api.get('/categories/stats'),
+    getSmartSuggestions: () => api.get('/suggestions'),
 };
 
 // ============ CART APIs ============
@@ -93,6 +99,13 @@ export const wishlistAPI = {
     removeFromWishlist: (bookId) => api.delete(`/wishlist/remove/${bookId}`),
     clearWishlist: () => api.delete('/wishlist/clear'),
     isInWishlist: (bookId) => api.get(`/wishlist/check/${bookId}`),
+};
+
+// ============ NOTIFICATION APIs ============
+export const notificationAPI = {
+    getNotifications: () => api.get('/notifications'),
+    markAsRead: (id) => api.put(`/notifications/${id}/read`),
+    markAllAsRead: () => api.put('/notifications/read-all'),
 };
 
 export default api;

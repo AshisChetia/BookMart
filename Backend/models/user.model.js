@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
         validate: {
-            validator: function(v) {
+            validator: function (v) {
                 return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(v)
             },
             message: "Please enter a valid email address"
@@ -48,7 +48,17 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ["user", "seller"],
         default: "user"
-    }
+    },
+    addresses: [{
+        label: { type: String, default: 'Home' },
+        fullName: { type: String },
+        phone: { type: String },
+        state: { type: String },
+        city: { type: String },
+        pincode: { type: String },
+        addressLine: { type: String },
+        isDefault: { type: Boolean, default: false }
+    }]
 }, { timestamps: true });
 
 const User = mongoose.model("User", userSchema);

@@ -107,6 +107,21 @@ const BuyerCategories = () => {
         fetchCategoryStats();
     }, []);
 
+    // Quotes Logic
+    const [quote, setQuote] = useState({ text: '', author: '' });
+
+    useEffect(() => {
+        const quotes = [
+            { text: "A room without books is like a body without a soul.", author: "Marcus Tullius Cicero" },
+            { text: "So many books, so little time.", author: "Frank Zappa" },
+            { text: "The person, be it gentleman or lady, who has not pleasure in a good novel, must be intolerably stupid.", author: "Jane Austen" },
+            { text: "Good friends, good books, and a sleepy conscience: this is the ideal life.", author: "Mark Twain" },
+            { text: "There is no friend as loyal as a book.", author: "Ernest Hemingway" }
+        ];
+        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+        setQuote(randomQuote);
+    }, []);
+
     const filteredCategories = categories.filter(cat =>
         cat.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -221,22 +236,24 @@ const BuyerCategories = () => {
                         </div>
                     </section>
 
-                    {/* Browse by Interest */}
+                    {/* Literary Quotes Section */}
                     <section className="mb-8">
-                        <div className="bg-primary/5 border border-primary/10 rounded-xl p-6 md:p-8">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                <div>
-                                    <span className="text-[10px] tracking-[0.3em] uppercase text-primary">Can't decide?</span>
-                                    <h2 className="text-xl md:text-2xl font-light text-text-primary mt-2">
-                                        Let us help you <span className="font-black italic">discover</span>
-                                    </h2>
-                                    <p className="text-sm text-text-secondary mt-2 max-w-md">
-                                        Take our quick quiz to get personalized book recommendations based on your interests.
+                        <div className="bg-primary/5 border border-primary/10 rounded-xl p-8 md:p-12 text-center relative overflow-hidden">
+                            {/* Decorative Quote mark */}
+                            <div className="absolute top-4 left-6 text-9xl text-primary/10 font-serif leading-none select-none">“</div>
+
+                            <div className="relative z-10 max-w-3xl mx-auto">
+                                <span className="text-xs tracking-[0.3em] uppercase text-primary mb-4 block">Literary Wisdom</span>
+                                <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif text-text-primary italic leading-relaxed mb-6">
+                                    "{quote.text}"
+                                </h2>
+                                <div className="flex items-center justify-center gap-3">
+                                    <span className="w-8 h-px bg-primary/50"></span>
+                                    <p className="text-sm md:text-base font-medium text-text-secondary uppercase tracking-widest">
+                                        {quote.author}
                                     </p>
+                                    <span className="w-8 h-px bg-primary/50"></span>
                                 </div>
-                                <button className="px-6 py-3 bg-text-primary text-background text-sm font-medium rounded-full hover:bg-primary transition-colors cursor-pointer whitespace-nowrap">
-                                    Take the Quiz
-                                </button>
                             </div>
                         </div>
                     </section>

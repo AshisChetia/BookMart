@@ -247,3 +247,98 @@ export const getCategoryStats = async (req, res) => {
         });
     }
 };
+
+export const getSmartSuggestions = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        let suggestions = [];
+        let reason = "Top Selling";
+
+        // 1. Check user Order History
+        const userOrders = await Order.find({ buyer: userId }).populate('book');
+
+        if (userOrders.length > 0) {
+            // Get categories from bought books
+            const boughtCategories = [...new Set(userOrders.map(order => order.book?.category).filter(Boolean))];
+            const boughtBookIds = userOrders.map(order => order.book?._id);
+
+            if (boughtCategories.length > 0) {
+                // Find books in these categories, excluding bought ones
+                suggestions = await Book.find({
+                    category: { $in: boughtCategories },
+                    _id: { $nin: boughtBookIds }
+                })
+                    .limit(4)
+                    .select("title author price image category seller rating");
+
+                if (suggestions.length > 0) {
+                    reason = `Because you like ${boughtCategories[0]}`;
+                }
+            }
+        }
+
+        // 2. Fallback: Top Selling Global (if < 4 suggestions)
+        if (suggestions.length < 4) {
+            const excludeIds = [...suggestions.map(s => s._id), ...(userOrders?.map(o => o.book?._id) || [])];
+
+            const topSelling = await Order.aggregate([
+                {
+                    $group: {
+                        _id: "$book",
+                        totalSold: { $sum: "$quantity" }
+                    }
+                },
+                { $sort: { totalSold: -1 } },
+                { $limit: 10 }, // Get top 10 candidates
+                {
+                    $lookup: {
+                        from: "books",
+                        localField: "_id",
+                        foreignField: "_id",
+                        as: "bookDetails"
+                    }
+                },
+                { $unwind: "$bookDetails" },
+                {
+                    $project: {
+                        _id: "$bookDetails._id",
+                        title: "$bookDetails.title",
+                        author: "$bookDetails.author",
+                        price: "$bookDetails.price",
+                        image: "$bookDetails.image",
+                        category: "$bookDetails.category",
+                        seller: "$bookDetails.seller",
+                    }
+                },
+                { $match: { _id: { $nin: excludeIds } } },
+                { $limit: 4 - suggestions.length }
+            ]);
+
+            suggestions = [...suggestions, ...topSelling];
+            if (suggestions.length === topSelling.length) reason = "Trending Now"; // If all were top selling
+        }
+
+        // 3. Last Resort: Random books (if still < 4)
+        if (suggestions.length < 4) {
+            const excludeIds = suggestions.map(s => s._id);
+            const randomBooks = await Book.find({ _id: { $nin: excludeIds } })
+                .limit(4 - suggestions.length)
+                .select("title author price image category seller");
+
+            suggestions = [...suggestions, ...randomBooks];
+        }
+
+        return res.status(200).json({
+            success: true,
+            suggestions,
+            reason
+        });
+
+    } catch (error) {
+        console.error("Smart Suggestions Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch suggestions"
+        });
+    }
+};

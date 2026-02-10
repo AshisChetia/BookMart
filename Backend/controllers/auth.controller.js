@@ -29,9 +29,16 @@ export const signup = async (req, res) => {
             fullname,
             email,
             phone,
-            address,
+            address, // Maintain legacy address for now
             password: hashedPassword,
-            role: role || "user"  // Default to "user" if not provided
+            role: role || "user",
+            addresses: [{
+                label: 'Home',
+                fullName: fullname,
+                phone: phone,
+                addressLine: address,
+                isDefault: true
+            }]
         })
 
         return res.status(200).json({
@@ -93,6 +100,7 @@ export const login = async (req, res) => {
                 phone: user.phone,
                 address: user.address,
                 role: user.role,
+                addresses: user.addresses,
                 createdAt: user.createdAt
             }
         })
@@ -116,6 +124,7 @@ export const getMe = async (req, res) => {
                 phone: req.user.phone,
                 address: req.user.address,
                 role: req.user.role,
+                addresses: req.user.addresses,
                 createdAt: req.user.createdAt
             }
         });
@@ -157,6 +166,7 @@ export const updateProfile = async (req, res) => {
                 phone: user.phone,
                 address: user.address,
                 role: user.role,
+                addresses: user.addresses,
                 createdAt: user.createdAt
             }
         });
@@ -168,3 +178,73 @@ export const updateProfile = async (req, res) => {
         });
     }
 }
+
+export const addAddress = async (req, res) => {
+    try {
+        const { label, fullName, phone, state, city, pincode, addressLine, isDefault } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (isDefault) {
+            user.addresses.forEach(addr => addr.isDefault = false);
+        }
+
+        user.addresses.push({ label, fullName, phone, state, city, pincode, addressLine, isDefault });
+        await user.save();
+
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const updateAddress = async (req, res) => {
+    try {
+        const { addressId } = req.params;
+        const updateData = req.body;
+        const user = await User.findById(req.user._id);
+
+        const address = user.addresses.id(addressId);
+        if (!address) return res.status(404).json({ success: false, message: "Address not found" });
+
+        if (updateData.isDefault) {
+            user.addresses.forEach(addr => addr.isDefault = false);
+        }
+
+        Object.assign(address, updateData);
+        await user.save();
+
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const deleteAddress = async (req, res) => {
+    try {
+        const { addressId } = req.params;
+        const user = await User.findById(req.user._id);
+
+        user.addresses = user.addresses.filter(addr => addr._id.toString() !== addressId);
+        await user.save();
+
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const setDefaultAddress = async (req, res) => {
+    try {
+        const { addressId } = req.params;
+        const user = await User.findById(req.user._id);
+
+        user.addresses.forEach(addr => {
+            addr.isDefault = addr._id.toString() === addressId;
+        });
+
+        await user.save();
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

@@ -1,4 +1,5 @@
 import Order from "../models/order.model.js";
+import { createNotification } from "./notification.controller.js";
 
 export const createOrder = async (req, res) => {
     try {
@@ -14,6 +15,24 @@ export const createOrder = async (req, res) => {
             totalAmount,
             shippingAddress
         })
+
+        // Notify Seller
+        await createNotification(
+            seller,
+            "You have a new order!",
+            "order_update",
+            order._id,
+            "Order"
+        );
+
+        // Notify Buyer
+        await createNotification(
+            buyer,
+            "Your order has been placed successfully!",
+            "order_update",
+            order._id,
+            "Order"
+        );
 
         return res.status(201).json({
             success: true,
@@ -39,9 +58,10 @@ export const getMyOrder = async (req, res) => {
             .sort({ createdAt: -1 });
 
         if (orders.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No orders found"
+            return res.status(200).json({
+                success: true,
+                message: "No orders found",
+                orders: []
             })
         }
 
@@ -112,6 +132,15 @@ export const updateOrderStatus = async (req, res) => {
 
         order.status = status;
         await order.save();
+
+        // Notify Buyer
+        await createNotification(
+            order.buyer,
+            `Your order for "${order.book?.title || 'a book'}" has been ${status}`,
+            "order_update",
+            order._id,
+            "Order"
+        );
 
         return res.status(200).json({
             success: true,

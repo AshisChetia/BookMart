@@ -1,16 +1,63 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { notificationAPI } from '../../services/api';
 
 const SellerHeader = ({ onMenuClick }) => {
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const notificationRef = useRef(null);
+    const navigate = useNavigate();
 
-    const notifications = [
-        { id: 1, type: 'order', message: 'New order received for "The Psychology of Money"', time: '2 min ago', unread: true },
-        { id: 2, type: 'review', message: 'New 5-star review on "Atomic Habits"', time: '1 hour ago', unread: true },
-        { id: 3, type: 'stock', message: '"Deep Work" is running low on stock (2 left)', time: '3 hours ago', unread: false },
-    ];
+    const fetchNotifications = async () => {
+        try {
+            const response = await notificationAPI.getNotifications();
+            if (response.data.success) {
+                setNotifications(response.data.notifications);
+                setUnreadCount(response.data.unreadCount);
+            }
+        } catch (error) {
+            console.error("Failed to fetch notifications:", error);
+        }
+    };
 
-    const unreadCount = notifications.filter(n => n.unread).length;
+    useEffect(() => {
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+                setNotificationsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleMarkAsRead = async (id, relatedId) => {
+        try {
+            await notificationAPI.markAsRead(id);
+            fetchNotifications();
+            if (relatedId) {
+                navigate(`/seller/orders`); // Currently specific order view for seller might not exist as /seller/orders/:id, but /seller/orders is where they manage them
+            }
+            setNotificationsOpen(false);
+        } catch (error) {
+            console.error("Failed to mark notification as read:", error);
+        }
+    };
+
+    const handleMarkAllRead = async () => {
+        try {
+            await notificationAPI.markAllAsRead();
+            fetchNotifications();
+        } catch (error) {
+            console.error("Failed to mark all as read:", error);
+        }
+    };
 
     return (
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
@@ -54,7 +101,7 @@ const SellerHeader = ({ onMenuClick }) => {
                     </Link>
 
                     {/* Notifications */}
-                    <div className="relative">
+                    <div className="relative" ref={notificationRef}>
                         <button
                             onClick={() => setNotificationsOpen(!notificationsOpen)}
                             className="p-2 text-text-secondary hover:text-text-primary transition-colors cursor-pointer relative"
@@ -71,43 +118,60 @@ const SellerHeader = ({ onMenuClick }) => {
 
                         {/* Notifications Dropdown */}
                         {notificationsOpen && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
-                                <div className="absolute right-0 mt-2 w-80 bg-background border border-border rounded-xl shadow-lg z-50 overflow-hidden">
-                                    <div className="p-4 border-b border-border flex items-center justify-between">
-                                        <h3 className="font-medium text-text-primary">Notifications</h3>
-                                        <button className="text-xs text-primary hover:underline cursor-pointer">Mark all read</button>
-                                    </div>
-                                    <div className="max-h-80 overflow-y-auto">
-                                        {notifications.map(notification => (
+                            <div className="absolute right-0 mt-2 w-80 bg-background border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                                <div className="p-4 border-b border-border flex items-center justify-between">
+                                    <h3 className="font-medium text-text-primary">Notifications</h3>
+                                    {unreadCount > 0 && (
+                                        <button
+                                            onClick={handleMarkAllRead}
+                                            className="text-xs text-primary hover:underline cursor-pointer"
+                                        >
+                                            Mark all read
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="max-h-80 overflow-y-auto">
+                                    {notifications.length === 0 ? (
+                                        <div className="p-8 text-center text-text-muted">
+                                            <p className="text-sm">No notifications yet</p>
+                                        </div>
+                                    ) : (
+                                        notifications.map(notification => (
                                             <div
-                                                key={notification.id}
-                                                className={`p-4 border-b border-border last:border-0 hover:bg-background-alt transition-colors cursor-pointer ${notification.unread ? 'bg-primary/5' : ''}`}
+                                                key={notification._id}
+                                                onClick={() => handleMarkAsRead(notification._id, notification.relatedId)}
+                                                className={`p-4 border-b border-border last:border-0 hover:bg-background-alt transition-colors cursor-pointer ${!notification.isRead ? 'bg-primary/5' : ''}`}
                                             >
                                                 <div className="flex items-start gap-3">
-                                                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${notification.unread ? 'bg-primary' : 'bg-transparent'}`} />
+                                                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notification.isRead ? 'bg-primary' : 'bg-transparent'}`} />
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-sm text-text-primary line-clamp-2">{notification.message}</p>
-                                                        <p className="text-xs text-text-muted mt-1">{notification.time}</p>
+                                                        <p className={`text-sm ${!notification.isRead ? 'text-text-primary font-medium' : 'text-text-secondary'} line-clamp-2`}>
+                                                            {notification.message}
+                                                        </p>
+                                                        <p className="text-xs text-text-muted mt-1">
+                                                            {new Date(notification.createdAt).toLocaleDateString()} at {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                    <div className="p-3 border-t border-border bg-background-alt">
-                                        <Link to="/seller/notifications" className="block text-center text-sm text-primary hover:underline">
-                                            View all notifications
-                                        </Link>
-                                    </div>
+                                        ))
+                                    )}
                                 </div>
-                            </>
+                                {notifications.length > 0 && (
+                                    <div className="p-3 border-t border-border bg-background-alt">
+                                        <p className="text-center text-[10px] text-text-muted italic">
+                                            Recent activity history
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
 
                     {/* Profile */}
                     <Link to="/seller/profile" className="flex items-center gap-2">
                         <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-medium text-sm">
-                            BW
+                            S
                         </div>
                     </Link>
                 </div>

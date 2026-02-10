@@ -6,9 +6,10 @@ import { useAuth } from '../../context/AuthContext';
 const AuthPage = () => {
     const [searchParams] = useSearchParams();
     const mode = searchParams.get('mode');
-    const { login, signup } = useAuth();
+    const initialRole = searchParams.get('role'); // Get role from query params
 
-    const [role, setRole] = useState(null); // 'reader' or 'seller'
+    const { login, signup } = useAuth();
+    const [role, setRole] = useState(initialRole || null); // 'reader' or 'seller'
     const [isLogin, setIsLogin] = useState(mode !== 'signup');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
