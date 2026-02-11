@@ -1,6 +1,6 @@
 import express from "express";
 import { signup, login, getMe, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress } from "../controllers/auth.controller.js";
-import { isAuthenticated } from "../middlewares/auth.middleware.js";
+import { isAuthenticated } from "../middleware/auth.middleware.js";
 
 
 const router = express.Router();

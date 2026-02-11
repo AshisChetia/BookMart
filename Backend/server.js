@@ -10,6 +10,7 @@ import analyticsRoutes from "./routes/analytics.routes.js"
 import cartRoutes from "./routes/cart.routes.js"
 import wishlistRoutes from "./routes/wishlist.routes.js"
 import notificationRoutes from "./routes/notification.routes.js"
+import uploadRoutes from "./routes/upload.routes.js"
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use('/api', analyticsRoutes)
 app.use('/api/cart', cartRoutes)
 app.use('/api/wishlist', wishlistRoutes)
 app.use('/api/notifications', notificationRoutes)
+app.use('/api/upload', uploadRoutes)
 
 const PORT = process.env.PORT || 3000
 

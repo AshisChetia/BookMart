@@ -88,9 +88,10 @@ export const getSellerOrders = async (req, res) => {
             .sort({ createdAt: -1 });
 
         if (orders.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No orders found"
+            return res.status(200).json({
+                success: true,
+                message: "No orders found",
+                orders: []
             })
         }
 
@@ -182,6 +183,15 @@ export const deleteOrder = async (req, res) => {
                 message: "Only pending orders can be deleted"
             })
         }
+
+        // Notify Seller before deleting
+        await createNotification(
+            order.seller,
+            `Order for "${order.book?.title || 'a book'}" has been cancelled by the buyer`,
+            "order_cancelled",
+            order._id,
+            "Order"
+        );
 
         await Order.findByIdAndDelete(id);
 

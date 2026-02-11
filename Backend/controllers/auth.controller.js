@@ -101,7 +101,11 @@ export const login = async (req, res) => {
                 address: user.address,
                 role: user.role,
                 addresses: user.addresses,
-                createdAt: user.createdAt
+                createdAt: user.createdAt,
+                bio: user.bio,
+                gender: user.gender,
+                dateOfBirth: user.dateOfBirth,
+                profileImage: user.profileImage
             }
         })
     } catch (error) {
@@ -125,7 +129,11 @@ export const getMe = async (req, res) => {
                 address: req.user.address,
                 role: req.user.role,
                 addresses: req.user.addresses,
-                createdAt: req.user.createdAt
+                createdAt: req.user.createdAt,
+                bio: req.user.bio,
+                gender: req.user.gender,
+                dateOfBirth: req.user.dateOfBirth,
+                profileImage: req.user.profileImage
             }
         });
     } catch (error) {
@@ -139,7 +147,7 @@ export const getMe = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
     try {
-        const { fullname, phone, address } = req.body;
+        const { fullname, phone, address, city, state, pincode, bio, gender, dateOfBirth, profileImage } = req.body;
 
         const user = await User.findById(req.user._id);
         if (!user) {
@@ -149,10 +157,44 @@ export const updateProfile = async (req, res) => {
             });
         }
 
-        // Update only provided fields
+        // Update basic fields
         if (fullname) user.fullname = fullname;
         if (phone) user.phone = phone;
-        if (address) user.address = address;
+        if (bio !== undefined) user.bio = bio;
+        if (gender !== undefined) user.gender = gender;
+        if (dateOfBirth) user.dateOfBirth = dateOfBirth;
+        if (profileImage !== undefined) user.profileImage = profileImage;
+
+        // Handle Address Update
+        let fullAddress = user.address;
+        if (address || city || state || pincode) {
+            // Find default address or create new
+            let defaultAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
+
+            if (!defaultAddr) {
+                defaultAddr = { isDefault: true, label: 'Home' };
+                user.addresses.push(defaultAddr);
+            }
+
+            // Update specific fields if provided
+            if (address) defaultAddr.addressLine = address;
+            if (city) defaultAddr.city = city;
+            if (state) defaultAddr.state = state;
+            if (pincode) defaultAddr.pincode = pincode;
+            if (fullname) defaultAddr.fullName = fullname;
+            if (phone) defaultAddr.phone = phone;
+
+            // Reconstruct full address string for legacy support
+            const addrParts = [
+                defaultAddr.addressLine,
+                defaultAddr.city,
+                defaultAddr.state,
+                defaultAddr.pincode
+            ].filter(Boolean);
+
+            fullAddress = addrParts.join(', ');
+            user.address = fullAddress;
+        }
 
         await user.save();
 
@@ -167,7 +209,11 @@ export const updateProfile = async (req, res) => {
                 address: user.address,
                 role: user.role,
                 addresses: user.addresses,
-                createdAt: user.createdAt
+                createdAt: user.createdAt,
+                bio: user.bio,
+                gender: user.gender,
+                dateOfBirth: user.dateOfBirth,
+                profileImage: user.profileImage
             }
         });
     } catch (error) {

@@ -1,37 +1,116 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import SellerSidebar from '../../components/seller/SellerSidebar';
 import SellerHeader from '../../components/seller/SellerHeader';
+import { authAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const SellerProfile = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    // Seller profile data - replace with API
     const [profileData, setProfileData] = useState({
-        firstName: 'Rahul',
-        lastName: 'Sharma',
-        email: 'rahul.sharma@example.com',
-        phone: '+91 98765 43210',
-        dateOfBirth: '1992-05-15',
-        gender: 'Male',
-        address: '123 Book Street, Library Lane',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        pincode: '400001',
-        bio: 'Passionate book collector and seller with over 5 years of experience in curating quality reads. Specializing in self-help, fiction, and educational books.',
-        profileImage: null,
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        dateOfBirth: '',
+        gender: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: '',
+        bio: '',
+        profileImage: '',
     });
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                setLoading(true);
+                const response = await authAPI.getMe();
+                if (response.data.success) {
+                    const user = response.data.user;
+
+                    // Parse name
+                    const nameParts = user.fullname ? user.fullname.split(' ') : [''];
+                    const firstName = nameParts[0] || '';
+                    const lastName = nameParts.slice(1).join(' ') || '';
+
+                    // Parse address from default address object
+                    const defaultAddr = user.addresses?.find(a => a.isDefault) || user.addresses?.[0] || {};
+
+                    setProfileData({
+                        firstName,
+                        lastName,
+                        email: user.email || '',
+                        phone: user.phone || '',
+                        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
+                        gender: user.gender || 'Prefer not to say',
+                        address: defaultAddr.addressLine || user.address || '',
+                        city: defaultAddr.city || '',
+                        state: defaultAddr.state || '',
+                        pincode: defaultAddr.pincode || '',
+                        bio: user.bio || '',
+                        profileImage: user.profileImage || '',
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching profile:', error);
+                toast.error('Failed to load profile');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setProfileData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSave = () => {
-        // TODO: Save to API
-        setIsEditing(false);
+    const handleSave = async () => {
+        try {
+            const fullname = `${profileData.firstName} ${profileData.lastName}`.trim();
+            const payload = {
+                fullname,
+                phone: profileData.phone,
+                bio: profileData.bio,
+                gender: profileData.gender,
+                dateOfBirth: profileData.dateOfBirth,
+                address: profileData.address,
+                city: profileData.city,
+                state: profileData.state,
+                pincode: profileData.pincode,
+                profileImage: profileData.profileImage
+            };
+
+            const response = await authAPI.updateProfile(payload);
+            if (response.data.success) {
+                toast.success('Profile updated successfully');
+                setIsEditing(false);
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            toast.error('Failed to update profile');
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
+                <SellerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+                <div className="flex-1 flex flex-col min-h-screen min-w-0">
+                    <SellerHeader onMenuClick={() => setSidebarOpen(true)} />
+                    <main className="flex-1 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </main>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
@@ -85,11 +164,21 @@ const SellerProfile = () => {
                             <div className="flex flex-col sm:flex-row items-center gap-6">
                                 {/* Profile Image */}
                                 <div className="relative">
-                                    <div className="w-28 h-28 rounded-full bg-primary flex items-center justify-center text-white text-4xl font-bold border-4 border-white shadow-lg">
-                                        {profileData.firstName.charAt(0)}{profileData.lastName.charAt(0)}
-                                    </div>
+                                    {profileData.profileImage ? (
+                                        <img
+                                            src={profileData.profileImage}
+                                            alt="Profile"
+                                            className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-lg"
+                                            onError={(e) => { e.target.onerror = null; e.target.src = ''; }} // Fallback to initials if error
+                                        />
+                                    ) : (
+                                        <div className="w-28 h-28 rounded-full bg-primary flex items-center justify-center text-white text-4xl font-bold border-4 border-white shadow-lg">
+                                            {profileData.firstName.charAt(0)}{profileData.lastName.charAt(0)}
+                                        </div>
+                                    )}
+
                                     {isEditing && (
-                                        <button className="absolute -bottom-1 -right-1 w-9 h-9 bg-white border border-border rounded-full flex items-center justify-center text-text-secondary hover:text-primary transition-colors cursor-pointer shadow-sm">
+                                        <button className="absolute -bottom-1 -right-1 w-9 h-9 bg-white border border-border rounded-full flex items-center justify-center text-text-secondary hover:text-primary transition-colors cursor-pointer shadow-sm" title="Change Image URL">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -97,6 +186,18 @@ const SellerProfile = () => {
                                         </button>
                                     )}
                                 </div>
+                                {isEditing && (
+                                    <div className="w-full sm:w-auto">
+                                        <input
+                                            type="text"
+                                            name="profileImage"
+                                            value={profileData.profileImage}
+                                            onChange={handleInputChange}
+                                            placeholder="Profile Image URL"
+                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary"
+                                        />
+                                    </div>
+                                )}
 
                                 {/* Basic Info */}
                                 <div className="flex-1 text-center sm:text-left">
@@ -153,17 +254,7 @@ const SellerProfile = () => {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-text-muted uppercase mb-1.5">Email</label>
-                                    {isEditing ? (
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value={profileData.email}
-                                            onChange={handleInputChange}
-                                            className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary"
-                                        />
-                                    ) : (
-                                        <p className="text-sm text-text-primary py-2">{profileData.email}</p>
-                                    )}
+                                    <p className="text-sm text-text-primary py-2 bg-gray-50/50 rounded px-3 border border-transparent">{profileData.email}</p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-text-muted uppercase mb-1.5">Phone</label>
@@ -191,7 +282,7 @@ const SellerProfile = () => {
                                         />
                                     ) : (
                                         <p className="text-sm text-text-primary py-2">
-                                            {new Date(profileData.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                            {profileData.dateOfBirth ? new Date(profileData.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not set'}
                                         </p>
                                     )}
                                 </div>
@@ -237,7 +328,7 @@ const SellerProfile = () => {
                                             className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary"
                                         />
                                     ) : (
-                                        <p className="text-sm text-text-primary py-2">{profileData.address}</p>
+                                        <p className="text-sm text-text-primary py-2">{profileData.address || 'Not set'}</p>
                                     )}
                                 </div>
                                 <div>
@@ -251,7 +342,7 @@ const SellerProfile = () => {
                                             className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary"
                                         />
                                     ) : (
-                                        <p className="text-sm text-text-primary py-2">{profileData.city}</p>
+                                        <p className="text-sm text-text-primary py-2">{profileData.city || 'Not set'}</p>
                                     )}
                                 </div>
                                 <div>
@@ -265,7 +356,7 @@ const SellerProfile = () => {
                                             className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary"
                                         />
                                     ) : (
-                                        <p className="text-sm text-text-primary py-2">{profileData.state}</p>
+                                        <p className="text-sm text-text-primary py-2">{profileData.state || 'Not set'}</p>
                                     )}
                                 </div>
                                 <div>
@@ -279,7 +370,7 @@ const SellerProfile = () => {
                                             className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary"
                                         />
                                     ) : (
-                                        <p className="text-sm text-text-primary py-2">{profileData.pincode}</p>
+                                        <p className="text-sm text-text-primary py-2">{profileData.pincode || 'Not set'}</p>
                                     )}
                                 </div>
                             </div>
@@ -303,7 +394,7 @@ const SellerProfile = () => {
                                     placeholder="Tell us about yourself..."
                                 />
                             ) : (
-                                <p className="text-sm text-text-secondary leading-relaxed">{profileData.bio}</p>
+                                <p className="text-sm text-text-secondary leading-relaxed">{profileData.bio || 'No bio provided'}</p>
                             )}
                         </section>
 

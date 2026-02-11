@@ -78,7 +78,9 @@ export const orderAPI = {
 
 // ============ ANALYTICS APIs ============
 export const analyticsAPI = {
-    getSellerAnalytics: () => api.get('/seller/analytics'),
+    getSellerDashboard: (range) => api.get('/seller/dashboard', { params: { range } }),
+    getTopSellingBooks: (range) => api.get('/seller/top-books', { params: { range } }),
+    getRecentOrders: () => api.get('/seller/recent-orders'),
     getCategoryStats: () => api.get('/categories/stats'),
     getSmartSuggestions: () => api.get('/suggestions'),
 };
@@ -106,6 +108,15 @@ export const notificationAPI = {
     getNotifications: () => api.get('/notifications'),
     markAsRead: (id) => api.put(`/notifications/${id}/read`),
     markAllAsRead: () => api.put('/notifications/read-all'),
+};
+
+// ============ UPLOAD APIs ============
+export const uploadAPI = {
+    uploadImage: (formData) => api.post('/upload', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    }),
 };
 
 export default api;

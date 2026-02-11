@@ -139,11 +139,11 @@ const Wishlist = () => {
                     {/* Wishlist Items */}
                     {!loading && !error && filteredItems.length > 0 && (
                         <section className="mb-8">
-                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                                 {filteredItems.map((book) => (
-                                    <div key={book._id} className="bg-background-alt border border-border rounded-xl overflow-hidden group hover:shadow-lg transition-shadow">
+                                    <div key={book._id} className="bg-background-alt border border-border rounded-lg overflow-hidden group hover:shadow-md transition-shadow">
                                         {/* Book Image */}
-                                        <Link to={`/buyer/book/${book._id}`} state={{ from: 'wishlist' }} className="block relative aspect-[3/4] overflow-hidden">
+                                        <Link to={`/buyer/book/${book._id}`} state={{ from: 'wishlist' }} className="block relative aspect-[2/3] overflow-hidden">
                                             <img
                                                 src={getBookImage(book)}
                                                 alt={book.title}
@@ -163,26 +163,26 @@ const Wishlist = () => {
                                         </Link>
 
                                         {/* Book Info */}
-                                        <div className="p-3">
-                                            <span className="text-[10px] uppercase tracking-wider text-text-muted">{book.category}</span>
+                                        <div className="p-2">
+                                            <span className="text-[9px] uppercase tracking-wider text-text-muted">{book.category}</span>
                                             <Link to={`/buyer/book/${book._id}`} state={{ from: 'wishlist' }}>
-                                                <h3 className="text-sm font-medium text-text-primary mt-1 line-clamp-1 hover:text-primary transition-colors">{book.title}</h3>
+                                                <h3 className="text-xs font-medium text-text-primary mt-0.5 line-clamp-1 hover:text-primary transition-colors">{book.title}</h3>
                                             </Link>
-                                            <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">{book.author}</p>
+                                            <p className="text-[11px] text-text-secondary mt-0.5 line-clamp-1">{book.author}</p>
 
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <span className="text-base font-bold text-primary">₹{book.price}</span>
-                                                <span className="text-xs text-text-muted">
+                                            <div className="flex items-center gap-1.5 mt-1.5">
+                                                <span className="text-sm font-bold text-primary">₹{book.price}</span>
+                                                <span className="text-[10px] text-text-muted truncate">
                                                     by {book.seller?.fullname || 'Unknown'}
                                                 </span>
                                             </div>
 
                                             {/* Actions */}
-                                            <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+                                            <div className="flex gap-1.5 mt-2 pt-2 border-t border-border">
                                                 <button
                                                     onClick={() => handleMoveToCart(book._id)}
                                                     disabled={actionLoading === book._id || book.stock <= 0}
-                                                    className="flex-1 py-2 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                                                    className="flex-1 py-1.5 text-[10px] font-medium bg-primary text-white rounded-md hover:bg-primary-dark transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                                                 >
                                                     {actionLoading === book._id ? (
                                                         <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
@@ -191,17 +191,17 @@ const Wishlist = () => {
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                                             </svg>
-                                                            Add to Cart
+                                                            Cart
                                                         </>
                                                     )}
                                                 </button>
                                                 <button
                                                     onClick={() => handleRemove(book._id)}
                                                     disabled={actionLoading === book._id}
-                                                    className="p-2 text-text-secondary hover:text-red-500 border border-border rounded-lg hover:border-red-500 transition-colors cursor-pointer disabled:opacity-50"
+                                                    className="p-1.5 text-text-secondary hover:text-red-500 border border-border rounded-md hover:border-red-500 transition-colors cursor-pointer disabled:opacity-50"
                                                     title="Remove"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                     </svg>
                                                 </button>

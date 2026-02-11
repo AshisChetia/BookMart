@@ -46,7 +46,7 @@ const BuyerHeader = ({ searchQuery, setSearchQuery, onMenuClick }) => {
             await notificationAPI.markAsRead(id);
             fetchNotifications(); // Refresh list
             if (relatedId) {
-                navigate(`/buyer/orders/${relatedId}`);
+                navigate('/buyer/orders');
             }
             setIsNotificationOpen(false);
         } catch (error) {
@@ -60,6 +60,13 @@ const BuyerHeader = ({ searchQuery, setSearchQuery, onMenuClick }) => {
             fetchNotifications();
         } catch (error) {
             console.error("Failed to mark all as read:", error);
+        }
+    };
+
+    const handleSearch = (e) => {
+        if (e.key === 'Enter') {
+            navigate(`/buyer/home?search=${encodeURIComponent(searchQuery)}`);
+            setMobileSearchOpen(false);
         }
     };
 
@@ -88,6 +95,7 @@ const BuyerHeader = ({ searchQuery, setSearchQuery, onMenuClick }) => {
                                 placeholder="Search books..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={handleSearch}
                                 className="w-full pl-9 sm:pl-11 md:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 bg-background-alt border border-border rounded-full text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                             />
                             {/* Close button for mobile search */}

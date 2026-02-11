@@ -1,6 +1,6 @@
 import express from "express";
 import { getAllBooks, searchBooks, getBookById, createBook, updateBook, deleteBook, getSellerBooks } from "../controllers/book.controller.js";
-import { isAuthenticated, isSeller } from "../middlewares/auth.middleware.js";
+import { isAuthenticated, isSeller } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 

@@ -35,9 +35,24 @@ const BuyerProfile = () => {
         isDefault: false
     });
 
-    // Fetch profile data on mount
+    // Fetch profile data on mount and when page regains focus
     useEffect(() => {
         fetchProfileData();
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchProfileData();
+            }
+        };
+        const handleFocus = () => fetchProfileData();
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+        };
     }, []);
 
     useEffect(() => {
@@ -68,7 +83,7 @@ const BuyerProfile = () => {
                 setStats(prev => ({ ...prev, orders: ordersRes.value.data.orders?.length || 0 }));
             }
             if (wishlistRes.status === 'fulfilled' && wishlistRes.value.data.success) {
-                setStats(prev => ({ ...prev, wishlist: wishlistRes.value.wishlist?.books?.length || 0 }));
+                setStats(prev => ({ ...prev, wishlist: wishlistRes.value.data.wishlist?.books?.length || 0 }));
             }
             if (cartRes.status === 'fulfilled' && cartRes.value.data.success) {
                 setStats(prev => ({ ...prev, cart: cartRes.value.data.cart?.items?.length || 0 }));

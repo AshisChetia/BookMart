@@ -1,19 +1,58 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { assets } from '../../assets/assets';
 import SellerSidebar from '../../components/seller/SellerSidebar';
 import SellerHeader from '../../components/seller/SellerHeader';
+import { analyticsAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const SellerHome = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [dashboardData, setDashboardData] = useState({
+        stats: {
+            totalOrders: 0,
+            totalEarnings: 0,
+            totalBooks: 0,
+            totalCustomers: 0
+        },
+        recentOrders: [],
+        topBooks: []
+    });
 
-    // Stats data - replace with API data
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                setLoading(true);
+                const [statsRes, ordersRes, topBooksRes] = await Promise.all([
+                    analyticsAPI.getSellerDashboard(),
+                    analyticsAPI.getRecentOrders(),
+                    analyticsAPI.getTopSellingBooks()
+                ]);
+
+                setDashboardData({
+                    stats: statsRes.data.stats,
+                    recentOrders: ordersRes.data.recentOrders,
+                    topBooks: topBooksRes.data.topBooks
+                });
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                toast.error('Failed to load dashboard data');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
+    // Stats data mapped from API
     const stats = [
         {
             label: 'Total Revenue',
-            value: '₹48,250',
-            change: '+12.5%',
-            changeType: 'positive',
+            value: `₹${dashboardData.stats.totalEarnings.toLocaleString()}`,
+            change: 'Lifetime',
+            changeType: 'neutral',
             icon: (
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -24,9 +63,9 @@ const SellerHome = () => {
         },
         {
             label: 'Total Orders',
-            value: '156',
-            change: '+8.2%',
-            changeType: 'positive',
+            value: dashboardData.stats.totalOrders,
+            change: 'All time',
+            changeType: 'neutral',
             icon: (
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -37,9 +76,9 @@ const SellerHome = () => {
         },
         {
             label: 'Books Listed',
-            value: '42',
-            change: '+3',
-            changeType: 'positive',
+            value: dashboardData.stats.totalBooks,
+            change: 'Active listings',
+            changeType: 'neutral',
             icon: (
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -49,33 +88,18 @@ const SellerHome = () => {
             iconColor: 'text-purple-600'
         },
         {
-            label: 'Avg. Rating',
-            value: '4.9',
-            change: '124 reviews',
+            label: 'Unique Customers',
+            value: dashboardData.stats.totalCustomers,
+            change: 'Served so far',
             changeType: 'neutral',
             icon: (
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
             ),
             bgColor: 'from-amber-500/20 to-amber-500/5',
             iconColor: 'text-amber-600'
         }
-    ];
-
-    // Recent orders - replace with API data
-    const recentOrders = [
-        { id: 'ORD-2026-156', customer: 'Rahul Sharma', book: 'The Psychology of Money', price: 299, status: 'pending', time: '10 min ago' },
-        { id: 'ORD-2026-155', customer: 'Priya Patel', book: 'Atomic Habits', price: 349, status: 'accepted', time: '1 hour ago' },
-        { id: 'ORD-2026-154', customer: 'Amit Kumar', book: 'Deep Work', price: 325, status: 'shipped', time: '3 hours ago' },
-        { id: 'ORD-2026-153', customer: 'Sneha Gupta', book: 'The Alchemist', price: 199, status: 'delivered', time: '1 day ago' },
-    ];
-
-    // Top selling books
-    const topBooks = [
-        { id: 1, title: 'The Psychology of Money', author: 'Morgan Housel', sold: 45, revenue: 13455, image: assets.landing.featured },
-        { id: 2, title: 'Atomic Habits', author: 'James Clear', sold: 38, revenue: 13262, image: assets.categories.selfHelp },
-        { id: 3, title: 'Deep Work', author: 'Cal Newport', sold: 32, revenue: 10400, image: assets.categories.nonFiction },
     ];
 
     const getStatusBadge = (status) => {
@@ -84,9 +108,24 @@ const SellerHome = () => {
             accepted: 'bg-purple-100 text-purple-700',
             shipped: 'bg-blue-100 text-blue-700',
             delivered: 'bg-green-100 text-green-700',
+            cancelled: 'bg-red-100 text-red-700',
         };
         return styles[status] || 'bg-gray-100 text-gray-700';
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
+                <SellerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+                <div className="flex-1 flex flex-col min-h-screen min-w-0">
+                    <SellerHeader onMenuClick={() => setSidebarOpen(true)} />
+                    <main className="flex-1 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </main>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
@@ -105,7 +144,7 @@ const SellerHome = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <h1 className="text-xl sm:text-2xl font-light text-text-primary">
-                                    Welcome back, <span className="font-bold text-primary">BookWorm Store</span>
+                                    Welcome back, <span className="font-bold text-primary">to your Store</span>
                                 </h1>
                                 <p className="text-sm text-text-secondary mt-1">Here's what's happening with your store today.</p>
                             </div>
@@ -166,7 +205,7 @@ const SellerHome = () => {
                                 </div>
                                 <div>
                                     <span className="text-sm font-medium text-text-primary block">Pending</span>
-                                    <span className="text-xs text-orange-600">3 orders</span>
+                                    <span className="text-xs text-orange-600">Orders</span>
                                 </div>
                             </Link>
                             <Link to="/seller/analytics" className="flex items-center gap-3 p-4 bg-background-alt border border-border rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all group">
@@ -197,27 +236,33 @@ const SellerHome = () => {
                                     <h2 className="font-medium text-text-primary">Recent Orders</h2>
                                     <Link to="/seller/orders" className="text-sm text-primary hover:underline">View All</Link>
                                 </div>
-                                <div className="divide-y divide-border">
-                                    {recentOrders.map((order) => (
-                                        <div key={order.id} className="p-4 hover:bg-background transition-colors">
-                                            <div className="flex items-center justify-between gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <span className="text-sm font-medium text-text-primary">{order.id}</span>
-                                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${getStatusBadge(order.status)}`}>
-                                                            {order.status}
-                                                        </span>
+                                {dashboardData.recentOrders.length > 0 ? (
+                                    <div className="divide-y divide-border">
+                                        {dashboardData.recentOrders.map((order) => (
+                                            <div key={order._id} className="p-4 hover:bg-background transition-colors">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-sm font-medium text-text-primary text-xs uppercase">{order._id.slice(-6)}</span>
+                                                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${getStatusBadge(order.status)}`}>
+                                                                {order.status}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-text-secondary mt-1 truncate">{order.book?.title || 'Unknown Book'}</p>
+                                                        <p className="text-xs text-text-muted mt-0.5">
+                                                            {order.buyer?.fullname || 'Customer'} • {new Date(order.createdAt).toLocaleDateString()}
+                                                        </p>
                                                     </div>
-                                                    <p className="text-sm text-text-secondary mt-1 truncate">{order.book}</p>
-                                                    <p className="text-xs text-text-muted mt-0.5">{order.customer} • {order.time}</p>
-                                                </div>
-                                                <div className="text-right flex-shrink-0">
-                                                    <p className="text-sm font-bold text-primary">₹{order.price}</p>
+                                                    <div className="text-right flex-shrink-0">
+                                                        <p className="text-sm font-bold text-primary">₹{order.totalAmount}</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-8 text-center text-text-muted text-sm">No orders yet</div>
+                                )}
                             </div>
                         </section>
 
@@ -228,25 +273,34 @@ const SellerHome = () => {
                                     <h2 className="font-medium text-text-primary">Top Selling</h2>
                                     <Link to="/seller/books" className="text-sm text-primary hover:underline">View All</Link>
                                 </div>
-                                <div className="divide-y divide-border">
-                                    {topBooks.map((book, idx) => (
-                                        <div key={book.id} className="p-4 hover:bg-background transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
-                                                    {idx + 1}
-                                                </span>
-                                                <div className="w-10 h-14 rounded-lg overflow-hidden bg-background flex-shrink-0">
-                                                    <img src={book.image} alt={book.title} className="w-full h-full object-cover" />
+                                {dashboardData.topBooks.length > 0 ? (
+                                    <div className="divide-y divide-border">
+                                        {dashboardData.topBooks.map((book, idx) => (
+                                            <div key={book.bookId} className="p-4 hover:bg-background transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
+                                                        {idx + 1}
+                                                    </span>
+                                                    <div className="w-10 h-14 rounded-lg overflow-hidden bg-background flex-shrink-0">
+                                                        <img
+                                                            src={book.image}
+                                                            alt={book.title}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => e.target.src = assets.landing.featured}
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 className="text-sm font-medium text-text-primary truncate">{book.title}</h3>
+                                                        <p className="text-xs text-text-muted">{book.totalQuantitySold} sold</p>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-primary">₹{book.totalRevenue.toLocaleString()}</p>
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="text-sm font-medium text-text-primary truncate">{book.title}</h3>
-                                                    <p className="text-xs text-text-muted">{book.sold} sold</p>
-                                                </div>
-                                                <p className="text-sm font-bold text-primary">₹{book.revenue.toLocaleString()}</p>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-8 text-center text-text-muted text-sm">No sales yet</div>
+                                )}
                             </div>
 
                             {/* Tips Card */}

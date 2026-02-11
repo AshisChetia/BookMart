@@ -1,27 +1,48 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { assets } from '../../assets/assets';
 import SellerSidebar from '../../components/seller/SellerSidebar';
 import SellerHeader from '../../components/seller/SellerHeader';
+import { bookAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const SellerBooks = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [books, setBooks] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // Mock books data - replace with API
-    const books = [
-        { id: 1, title: 'The Psychology of Money', author: 'Morgan Housel', price: 299, originalPrice: 450, stock: 15, sold: 45, status: 'active', image: assets.landing.featured },
-        { id: 2, title: 'Atomic Habits', author: 'James Clear', price: 349, originalPrice: 499, stock: 8, sold: 38, status: 'active', image: assets.categories.selfHelp },
-        { id: 3, title: 'Deep Work', author: 'Cal Newport', price: 325, originalPrice: 450, stock: 2, sold: 32, status: 'low_stock', image: assets.categories.nonFiction },
-        { id: 4, title: 'The Alchemist', author: 'Paulo Coelho', price: 199, originalPrice: 299, stock: 0, sold: 24, status: 'out_of_stock', image: assets.categories.fiction },
-        { id: 5, title: 'Thinking, Fast and Slow', author: 'Daniel Kahneman', price: 399, originalPrice: 599, stock: 12, sold: 17, status: 'active', image: assets.categories.thriller },
-    ];
+    useEffect(() => {
+        const fetchBooks = async () => {
+            try {
+                setLoading(true);
+                const response = await bookAPI.getSellerBooks();
+                if (response.data.success) {
+                    setBooks(response.data.books);
+                }
+            } catch (error) {
+                console.error('Error fetching books:', error);
+                toast.error('Failed to load your books');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBooks();
+    }, []);
+
+    const getBookStatus = (book) => {
+        if (book.stock === 0) return 'out_of_stock';
+        if (book.stock < 5) return 'low_stock';
+        return 'active';
+    };
 
     const filteredBooks = books.filter(book => {
+        const status = getBookStatus(book);
         const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             book.author.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesFilter = filterStatus === 'all' || book.status === filterStatus;
+        const matchesFilter = filterStatus === 'all' || status === filterStatus;
         return matchesSearch && matchesFilter;
     });
 
@@ -33,6 +54,35 @@ const SellerBooks = () => {
         };
         return styles[status] || styles.active;
     };
+
+    const handleDeleteBook = async (id) => {
+        if (window.confirm('Are you sure you want to delete this book?')) {
+            try {
+                const response = await bookAPI.deleteBook(id);
+                if (response.data.success) {
+                    toast.success('Book deleted successfully');
+                    setBooks(books.filter(book => book._id !== id));
+                }
+            } catch (error) {
+                console.error('Error deleting book:', error);
+                toast.error('Failed to delete book');
+            }
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
+                <SellerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+                <div className="flex-1 flex flex-col min-h-screen min-w-0">
+                    <SellerHeader onMenuClick={() => setSidebarOpen(true)} />
+                    <main className="flex-1 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </main>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
@@ -99,14 +149,16 @@ const SellerBooks = () => {
                     <section>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
                             {filteredBooks.map((book) => {
-                                const statusStyle = getStatusBadge(book.status);
+                                const status = getBookStatus(book);
+                                const statusStyle = getStatusBadge(status);
                                 return (
-                                    <div key={book.id} className="bg-background-alt border border-border rounded-lg overflow-hidden group hover:shadow-md transition-shadow">
+                                    <div key={book._id} className="bg-background-alt border border-border rounded-lg overflow-hidden group hover:shadow-md transition-shadow">
                                         <div className="relative aspect-[4/5] overflow-hidden">
                                             <img
                                                 src={book.image}
                                                 alt={book.title}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                onError={(e) => e.target.src = assets.landing.featured}
                                             />
                                             <div className={`absolute top-2 right-2 px-1.5 py-0.5 ${statusStyle.bg} ${statusStyle.text} rounded text-[10px] font-medium`}>
                                                 {statusStyle.label}
@@ -119,23 +171,27 @@ const SellerBooks = () => {
                                             <div className="flex items-center justify-between mt-2">
                                                 <div className="flex items-center gap-1">
                                                     <span className="text-sm font-bold text-primary">₹{book.price}</span>
-                                                    <span className="text-[10px] text-text-muted line-through">₹{book.originalPrice}</span>
+                                                    {book.originalPrice > book.price && (
+                                                        <span className="text-[10px] text-text-muted line-through">₹{book.originalPrice}</span>
+                                                    )}
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border text-[10px] text-text-secondary">
                                                 <span>Stock: <strong className={book.stock <= 2 ? 'text-red-600' : 'text-text-primary'}>{book.stock}</strong></span>
-                                                <span>Sold: <strong className="text-text-primary">{book.sold}</strong></span>
                                             </div>
 
                                             <div className="flex gap-1.5 mt-3">
                                                 <Link
-                                                    to={`/seller/books/${book.id}/edit`}
+                                                    to={`/seller/books/${book._id}/edit`}
                                                     className="flex-1 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded hover:bg-primary/20 transition-colors text-center"
                                                 >
                                                     Edit
                                                 </Link>
-                                                <button className="px-2 py-1.5 border border-border rounded text-text-secondary hover:text-red-500 hover:border-red-500 transition-colors cursor-pointer">
+                                                <button
+                                                    onClick={() => handleDeleteBook(book._id)}
+                                                    className="px-2 py-1.5 border border-border rounded text-text-secondary hover:text-red-500 hover:border-red-500 transition-colors cursor-pointer"
+                                                >
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                     </svg>
@@ -155,7 +211,15 @@ const SellerBooks = () => {
                                     </svg>
                                 </div>
                                 <h3 className="text-lg font-medium text-text-primary mb-2">No books found</h3>
-                                <p className="text-text-secondary mb-6">Try adjusting your search or filters</p>
+                                <p className="text-text-secondary mb-6">{searchQuery || filterStatus !== 'all' ? 'Try adjusting your search or filters' : 'Start by adding your first book to sell'}</p>
+                                {!searchQuery && filterStatus === 'all' && (
+                                    <Link
+                                        to="/seller/books/new"
+                                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                                    >
+                                        Add Book Now
+                                    </Link>
+                                )}
                             </div>
                         )}
                     </section>

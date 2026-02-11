@@ -5,43 +5,85 @@ import Book from "../models/book.model.js";
 
 export const getSellerDashboard = async (req, res) => {
     try {
-
         const sellerId = req.user._id;
 
+        // 1. Basic Stats (Orders, Earnings, Customers, Books Sold)
         const orderStats = await Order.aggregate([
-
-            {
-                $match: { seller: sellerId }
-            },
-
+            { $match: { seller: sellerId } },
             {
                 $group: {
                     _id: null,
                     totalOrders: { $sum: 1 },
                     totalEarnings: {
                         $sum: {
-
-                            $cond: [
-                                { $eq: ["$status", "delivered"] },
-                                "$totalAmount",
-                                0
-                            ]
+                            $cond: [{ $eq: ["$status", "delivered"] }, "$totalAmount", 0]
                         }
                     },
-                    uniqueCustomers: { $addToSet: "$buyer" }
+                    totalBooksSold: {
+                        $sum: {
+                            $cond: [{ $ne: ["$status", "cancelled"] }, "$quantity", 0]
+                        }
+                    },
+                    uniqueCustomers: { $addToSet: "$buyer" },
+                    customerOrders: { $push: "$buyer" } // Keep all buyer IDs to check repeats
                 }
             }
         ]);
 
-
         const totalBooks = await Book.countDocuments({ seller: sellerId });
+        const stats = orderStats[0] || { totalOrders: 0, totalEarnings: 0, totalBooksSold: 0, uniqueCustomers: [], customerOrders: [] };
+
+        // Calculate Repeat Customers
+        const customerCounts = stats.customerOrders.reduce((acc, buyerId) => {
+            acc[buyerId] = (acc[buyerId] || 0) + 1;
+            return acc;
+        }, {});
+
+        const repeatCustomerCount = Object.values(customerCounts).filter(count => count > 1).length;
+        const totalUniqueCustomers = stats.uniqueCustomers.length;
+        const repeatRate = totalUniqueCustomers > 0
+            ? Math.round((repeatCustomerCount / totalUniqueCustomers) * 100)
+            : 0;
 
 
-        const stats = orderStats[0] || {
-            totalOrders: 0,
-            totalEarnings: 0,
-            uniqueCustomers: []
-        };
+        // 2. Monthly Revenue (Last 6 months)
+        const monthlyRevenue = await Order.aggregate([
+            {
+                $match: {
+                    seller: sellerId,
+                    status: { $in: ['delivered', 'shipped', 'accepted'] },
+                    createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) }
+                }
+            },
+            {
+                $group: {
+                    _id: { month: { $month: "$createdAt" }, year: { $year: "$createdAt" } },
+                    revenue: { $sum: "$totalAmount" }
+                }
+            },
+            { $sort: { "_id.year": 1, "_id.month": 1 } }
+        ]);
+
+        // 3. Category Sales
+        const categorySales = await Order.aggregate([
+            { $match: { seller: sellerId, status: { $ne: 'cancelled' } } },
+            { $lookup: { from: 'books', localField: 'book', foreignField: '_id', as: 'book' } },
+            { $unwind: '$book' },
+            {
+                $group: {
+                    _id: '$book.category',
+                    sales: { $sum: '$quantity' },
+                    revenue: { $sum: '$totalAmount' }
+                }
+            },
+            { $sort: { sales: -1 } }
+        ]);
+
+        // 4. Order Status Stats
+        const statusStats = await Order.aggregate([
+            { $match: { seller: sellerId } },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
 
         return res.status(200).json({
             success: true,
@@ -50,7 +92,23 @@ export const getSellerDashboard = async (req, res) => {
                 totalOrders: stats.totalOrders,
                 totalEarnings: stats.totalEarnings,
                 totalBooks: totalBooks,
-                totalCustomers: stats.uniqueCustomers.length
+                totalBooksSold: stats.totalBooksSold,
+                totalCustomers: stats.uniqueCustomers.length,
+                repeatCustomerRate: repeatRate,
+                repeatCustomerCount: repeatCustomerCount,
+                monthlyRevenue: monthlyRevenue.map(item => ({
+                    month: new Date(0, item._id.month - 1).toLocaleString('default', { month: 'short' }),
+                    value: item.revenue
+                })),
+                categorySales: categorySales.map(item => ({
+                    category: item._id,
+                    sales: item.sales,
+                    revenue: item.revenue
+                })),
+                orderStatusStats: statusStats.reduce((acc, curr) => {
+                    acc[curr._id] = curr.count;
+                    return acc;
+                }, {})
             }
         });
 
@@ -68,11 +126,23 @@ export const getSellerDashboard = async (req, res) => {
 export const getTopSellingBooks = async (req, res) => {
     try {
         const sellerId = req.user._id;
+        const { range = 'week' } = req.query;
+
+        let startDate = new Date();
+        if (range === 'week') {
+            startDate.setDate(startDate.getDate() - 7);
+        } else if (range === 'month') {
+            startDate.setDate(startDate.getDate() - 30);
+        } else if (range === 'year') {
+            startDate.setFullYear(startDate.getFullYear() - 1);
+        }
 
         const topBooks = await Order.aggregate([
-
             {
-                $match: { seller: sellerId }
+                $match: {
+                    seller: sellerId,
+                    createdAt: { $gte: startDate }
+                }
             },
 
             {

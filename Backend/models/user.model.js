@@ -44,6 +44,12 @@ const userSchema = new mongoose.Schema({
         minlength: [6, "Password must be at least 6 characters long"],
     },
 
+    // Extended Profile Fields
+    bio: { type: String, maxlength: 500, default: "" },
+    gender: { type: String, enum: ["Male", "Female", "Other", "Prefer not to say", ""], default: "" },
+    dateOfBirth: { type: Date },
+    profileImage: { type: String, default: "" },
+
     role: {
         type: String,
         enum: ["user", "seller"],

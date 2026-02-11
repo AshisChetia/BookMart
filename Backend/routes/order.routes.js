@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuthenticated } from "../middlewares/auth.middleware.js";
+import { isAuthenticated } from "../middleware/auth.middleware.js";
 import { createOrder, getMyOrder, getSellerOrders, updateOrderStatus, deleteOrder } from "../controllers/order.controller.js";
 
 

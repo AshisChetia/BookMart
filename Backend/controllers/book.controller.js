@@ -4,11 +4,17 @@ import Book from "../models/book.model.js";
 export const createBook = async (req, res) => {
     try {
 
-        const { title, author, subHeading, description, price, stock, image, category } = req.body;
+        const { title, author, subHeading, description, price, stock, image, category, images } = req.body;
 
         const seller = req.user._id;
 
-        if (!title || !author || !subHeading || !description || !price || !stock || !image || !category || !seller) {
+        // If 'images' array is provided, use the first one as primary 'image' if not explicitly provided
+        let primaryImage = image;
+        if (!primaryImage && images && images.length > 0) {
+            primaryImage = images[0];
+        }
+
+        if (!title || !author || !subHeading || !description || !price || !stock || !primaryImage || !category || !seller) {
             return res.status(400).json({
                 success: false,
                 message: "All fields are required"
@@ -22,7 +28,8 @@ export const createBook = async (req, res) => {
             description,
             price,
             stock,
-            image,
+            image: primaryImage,
+            images: images || [primaryImage],
             category,
             seller
         })
@@ -177,20 +184,13 @@ export const getBookById = async (req, res) => {
 
 export const getSellerBooks = async (req, res) => {
     try {
-        
-        const seller = req.user._id;
-        
-        const books = await Book.find({seller}).populate("seller", "fullname email");
 
-        if(books.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No books found"
-            })
-        }
+        const seller = req.user._id;
+
+        const books = await Book.find({ seller }).populate("seller", "fullname email");
 
         return res.status(200).json({
-            success: false,
+            success: true,
             message: "Books fetch successfully",
             books
         })
@@ -206,17 +206,17 @@ export const getSellerBooks = async (req, res) => {
 
 export const searchBooks = async (req, res) => {
     try {
-        const { 
-            query,              
-            category,           
-            minPrice,           
-            maxPrice,          
-            page = 1,         
-            limit = 10         
+        const {
+            query,
+            category,
+            minPrice,
+            maxPrice,
+            page = 1,
+            limit = 10
         } = req.query;
-       
+
         let filter = {};
-        
+
         if (query) {
             const regex = new RegExp(query, "i");
             filter.$or = [
@@ -224,23 +224,23 @@ export const searchBooks = async (req, res) => {
                 { author: regex }
             ];
         }
-    
+
         if (category) {
             filter.category = category;
         }
-        
+
         if (minPrice || maxPrice) {
             filter.price = {};
             if (minPrice) filter.price.$gte = Number(minPrice);
             if (maxPrice) filter.price.$lte = Number(maxPrice);
         }
-       
+
         const books = await Book.find(filter)
             .populate("seller", "fullname email")
-            .skip((page - 1) * limit)    
-            .limit(Number(limit))       
-            .sort({ createdAt: -1 });     
-        
+            .skip((page - 1) * limit)
+            .limit(Number(limit))
+            .sort({ createdAt: -1 });
+
         const total = await Book.countDocuments(filter);
         return res.status(200).json({
             success: true,

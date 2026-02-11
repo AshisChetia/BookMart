@@ -6,28 +6,28 @@ const bookSchema = new mongoose.Schema({
         required: [true, "Title is required"],
         trim: true,
         minlength: [3, "Title must be at least 3 characters long"],
-        maxlength: [100, "Title must be at most 100 characters long"]
+        maxlength: [200, "Title must be at most 200 characters long"]
     },
     author: {
         type: String,
         required: [true, "Author name is required"],
         trim: true,
         minlength: [3, "Author name must be at least 3 characters long"],
-        maxlength: [100, "Author name must be at most 100 characters long"]
+        maxlength: [200, "Author name must be at most 200 characters long"]
     },
     subHeading: {
         type: String,
         required: [true, "Subheading is required"],
         trim: true,
         minlength: [3, "Subheading must be at least 3 characters long"],
-        maxlength: [100, "Subheading must be at most 100 characters long"]
+        maxlength: [200, "Subheading must be at most 200 characters long"]
     },
     description: {
         type: String,
         required: [true, "Description is required"],
         trim: true,
         minlength: [10, "Description must be at least 10 characters long"],
-        maxlength: [1000, "Description must be at most 1000 characters long"]
+        maxlength: [5000, "Description must be at most 5000 characters long"]
     },
     price: {
         type: Number,
@@ -43,6 +43,9 @@ const bookSchema = new mongoose.Schema({
         type: String,
         required: [true, "Image is required"]
     },
+    images: [{
+        type: String
+    }],
     category: {
         type: String,
         required: [true, "Category is required"]
@@ -52,7 +55,7 @@ const bookSchema = new mongoose.Schema({
         ref: "User",
         required: [true, "User is required"]
     }
-}, {timestamps: true})
+}, { timestamps: true })
 
 const Book = mongoose.model("Book", bookSchema);
 

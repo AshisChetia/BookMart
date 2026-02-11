@@ -17,7 +17,6 @@ import AddBook from "./pages/seller/AddBook";
 import EditBook from "./pages/seller/EditBook";
 import SellerOrders from "./pages/seller/SellerOrders";
 import SellerProfile from "./pages/seller/SellerProfile";
-import SellerSettings from "./pages/seller/SellerSettings";
 import { Routes, Route } from "react-router-dom";
 
 function App() {
@@ -45,7 +44,6 @@ function App() {
         <Route path="/seller/books/:bookId/edit" element={<EditBook />} />
         <Route path="/seller/orders" element={<SellerOrders />} />
         <Route path="/seller/profile" element={<SellerProfile />} />
-        <Route path="/seller/settings" element={<SellerSettings />} />
       </Routes>
     </>
   );

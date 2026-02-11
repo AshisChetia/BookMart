@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import SellerSidebar from '../../components/seller/SellerSidebar';
 import SellerHeader from '../../components/seller/SellerHeader';
+import { analyticsAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
-// Circular Progress Component - Reusable for different metrics
+// Circular Progress Component
 const CircularProgress = ({ percentage, size = 120, strokeWidth = 10, color = '#234F1E', label, value, subLabel }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
@@ -12,17 +13,8 @@ const CircularProgress = ({ percentage, size = 120, strokeWidth = 10, color = '#
     return (
         <div className="flex flex-col items-center">
             <div className="relative" style={{ width: size, height: size }}>
-                {/* Background circle */}
                 <svg className="transform -rotate-90" width={size} height={size}>
-                    <circle
-                        cx={size / 2}
-                        cy={size / 2}
-                        r={radius}
-                        stroke="#E5E2DB"
-                        strokeWidth={strokeWidth}
-                        fill="none"
-                    />
-                    {/* Progress circle */}
+                    <circle cx={size / 2} cy={size / 2} r={radius} stroke="#E5E2DB" strokeWidth={strokeWidth} fill="none" />
                     <circle
                         cx={size / 2}
                         cy={size / 2}
@@ -36,7 +28,6 @@ const CircularProgress = ({ percentage, size = 120, strokeWidth = 10, color = '#
                         className="transition-all duration-1000 ease-out"
                     />
                 </svg>
-                {/* Center text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-2xl font-bold text-text-primary">{value}</span>
                     {subLabel && <span className="text-xs text-text-muted">{subLabel}</span>}
@@ -49,46 +40,97 @@ const CircularProgress = ({ percentage, size = 120, strokeWidth = 10, color = '#
 
 const SellerAnalytics = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [timeRange, setTimeRange] = useState('month');
-
-    // Analytics data - replace with API data later
-    const analyticsData = {
+    const [timeRange, setTimeRange] = useState('week');
+    const [loading, setLoading] = useState(true);
+    const [analyticsData, setAnalyticsData] = useState({
         overview: {
-            totalRevenue: 48250,
-            totalOrders: 156,
-            avgOrderValue: 309,
-            conversionRate: 3.2,
+            totalRevenue: 0,
+            totalOrders: 0,
+            avgOrderValue: 0,
+            totalBooksSold: 0,
         },
-        circularMetrics: [
-            { label: 'Order Completion', percentage: 94, value: '94%', subLabel: '147/156', color: '#234F1E' },
-            { label: 'Customer Satisfaction', percentage: 98, value: '4.9', subLabel: '124 reviews', color: '#2E7D32' },
-            { label: 'Return Rate', percentage: 2, value: '2%', subLabel: '3 returns', color: '#C62828' },
-            { label: 'Repeat Customers', percentage: 45, value: '45%', subLabel: '70 customers', color: '#1565C0' },
-        ],
-        monthlyRevenue: [
-            { month: 'Sep', value: 32000 },
-            { month: 'Oct', value: 38500 },
-            { month: 'Nov', value: 42000 },
-            { month: 'Dec', value: 55000 },
-            { month: 'Jan', value: 48250 },
-            { month: 'Feb', value: 52000 },
-        ],
-        categoryBreakdown: [
-            { category: 'Self-Help', sales: 45, percentage: 35, color: '#234F1E' },
-            { category: 'Fiction', sales: 38, percentage: 30, color: '#3A7D32' },
-            { category: 'Non-Fiction', sales: 28, percentage: 22, color: '#4A7C59' },
-            { category: 'Thriller', sales: 17, percentage: 13, color: '#6B9B7A' },
-        ],
-        topPerformers: [
-            { title: 'The Psychology of Money', sales: 45, revenue: 13455 },
-            { title: 'Atomic Habits', sales: 38, revenue: 13262 },
-            { title: 'Deep Work', sales: 32, revenue: 10400 },
-            { title: 'The Alchemist', sales: 24, revenue: 4776 },
-            { title: 'Thinking, Fast and Slow', sales: 17, revenue: 6783 },
-        ],
-    };
+        circularMetrics: [],
+        monthlyRevenue: [],
+        categoryBreakdown: [],
+        topPerformers: [],
+    });
 
-    const maxRevenue = Math.max(...analyticsData.monthlyRevenue.map(m => m.value));
+    useEffect(() => {
+        const fetchAnalytics = async () => {
+            try {
+                setLoading(true);
+                const [dashboardRes, topBooksRes] = await Promise.all([
+                    analyticsAPI.getSellerDashboard(timeRange), // Pass timeRange
+                    analyticsAPI.getTopSellingBooks(timeRange)
+                ]);
+
+                if (dashboardRes.data.success) {
+                    const stats = dashboardRes.data.stats;
+                    const orderStats = stats.orderStatusStats || {};
+                    const totalOrders = stats.totalOrders || 1; // Prevent division by zero
+
+                    // Calculate metrics
+                    const completedOrders = (orderStats.delivered || 0) + (orderStats.shipped || 0);
+                    const completionRate = Math.round((completedOrders / totalOrders) * 100);
+
+                    const cancelledOrders = orderStats.cancelled || 0;
+                    const returnRate = Math.round((cancelledOrders / totalOrders) * 100);
+
+                    const avgOrderValue = stats.totalOrders > 0
+                        ? Math.round(stats.totalEarnings / stats.totalOrders)
+                        : 0;
+
+                    setAnalyticsData({
+                        overview: {
+                            totalRevenue: stats.totalEarnings,
+                            totalOrders: stats.totalOrders,
+                            avgOrderValue: avgOrderValue,
+                            totalBooksSold: stats.totalBooksSold || 0,
+                        },
+                        circularMetrics: [
+                            { label: 'Order Completion', percentage: completionRate, value: `${completionRate}%`, subLabel: `${completedOrders}/${stats.totalOrders}`, color: '#234F1E' },
+                            // Removed Customer Satisfaction 
+                            { label: 'Cancellation Rate', percentage: returnRate, value: `${returnRate}%`, subLabel: `${cancelledOrders} cancelled`, color: '#C62828' },
+                            { label: 'Repeat Customers', percentage: stats.repeatCustomerRate || 0, value: `${stats.repeatCustomerRate || 0}%`, subLabel: `${stats.repeatCustomerCount || 0} returning`, color: '#1565C0' },
+                        ],
+                        monthlyRevenue: stats.monthlyRevenue || [],
+                        categoryBreakdown: stats.categorySales?.map((cat, index) => ({
+                            category: cat.category,
+                            sales: cat.sales,
+                            percentage: Math.round((cat.sales / (stats.totalBooksSold || 1)) * 100), // Pct of total books sold
+                            color: ['#234F1E', '#3A7D32', '#4A7C59', '#6B9B7A'][index % 4]
+                        })) || [],
+                        topPerformers: topBooksRes.data.topBooks || []
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching analytics:', error);
+                toast.error('Failed to load analytics data');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAnalytics();
+    }, [timeRange]); // Re-run when timeRange changes
+
+    const maxRevenue = analyticsData.monthlyRevenue.length > 0
+        ? Math.max(...analyticsData.monthlyRevenue.map(m => m.value))
+        : 1000;
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
+                <SellerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+                <div className="flex-1 flex flex-col min-h-screen min-w-0">
+                    <SellerHeader onMenuClick={() => setSidebarOpen(true)} />
+                    <main className="flex-1 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </main>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
@@ -107,6 +149,7 @@ const SellerAnalytics = () => {
                                 </h1>
                                 <p className="text-sm text-text-secondary mt-1">Track your store's performance and growth.</p>
                             </div>
+                            {/* Time range selector - Visual only for now as API returns fixed range */}
                             <div className="flex items-center gap-2 bg-background-alt border border-border rounded-lg p-1">
                                 {['week', 'month', 'year'].map((range) => (
                                     <button
@@ -130,22 +173,22 @@ const SellerAnalytics = () => {
                             <div className="bg-background-alt border border-border rounded-xl p-4 sm:p-5">
                                 <p className="text-xs sm:text-sm text-text-secondary">Total Revenue</p>
                                 <p className="text-xl sm:text-2xl font-bold text-text-primary mt-1">₹{analyticsData.overview.totalRevenue.toLocaleString()}</p>
-                                <p className="text-xs text-green-600 mt-1">+12.5% from last month</p>
+                                <p className="text-xs text-text-muted mt-1 capitalize">{timeRange} to date</p>
                             </div>
                             <div className="bg-background-alt border border-border rounded-xl p-4 sm:p-5">
                                 <p className="text-xs sm:text-sm text-text-secondary">Total Orders</p>
                                 <p className="text-xl sm:text-2xl font-bold text-text-primary mt-1">{analyticsData.overview.totalOrders}</p>
-                                <p className="text-xs text-green-600 mt-1">+8.2% from last month</p>
+                                <p className="text-xs text-text-muted mt-1">Avg. value: ₹{analyticsData.overview.avgOrderValue}</p>
                             </div>
                             <div className="bg-background-alt border border-border rounded-xl p-4 sm:p-5">
-                                <p className="text-xs sm:text-sm text-text-secondary">Avg. Order Value</p>
-                                <p className="text-xl sm:text-2xl font-bold text-text-primary mt-1">₹{analyticsData.overview.avgOrderValue}</p>
-                                <p className="text-xs text-green-600 mt-1">+3.1% from last month</p>
+                                <p className="text-xs sm:text-sm text-text-secondary">Books Sold</p>
+                                <p className="text-xl sm:text-2xl font-bold text-text-primary mt-1">{analyticsData.overview.totalBooksSold}</p>
+                                <p className="text-xs text-text-muted mt-1">Total units</p>
                             </div>
                             <div className="bg-background-alt border border-border rounded-xl p-4 sm:p-5">
-                                <p className="text-xs sm:text-sm text-text-secondary">Conversion Rate</p>
-                                <p className="text-xl sm:text-2xl font-bold text-text-primary mt-1">{analyticsData.overview.conversionRate}%</p>
-                                <p className="text-xs text-text-muted mt-1">Industry avg: 2.5%</p>
+                                <p className="text-xs sm:text-sm text-text-secondary">Est. Earnings</p>
+                                <p className="text-xl sm:text-2xl font-bold text-text-primary mt-1">₹{(analyticsData.overview.totalRevenue * 0.9).toLocaleString()}</p>
+                                <p className="text-xs text-text-muted mt-1">After fees</p>
                             </div>
                         </div>
                     </section>
@@ -157,7 +200,7 @@ const SellerAnalytics = () => {
                             <h2 className="text-base sm:text-lg font-medium text-text-primary">Performance Metrics</h2>
                         </div>
                         <div className="bg-background-alt border border-border rounded-xl p-6">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
                                 {analyticsData.circularMetrics.map((metric, idx) => (
                                     <CircularProgress
                                         key={idx}
@@ -177,26 +220,30 @@ const SellerAnalytics = () => {
                         {/* Revenue Chart */}
                         <section>
                             <div className="bg-background-alt border border-border rounded-xl p-5">
-                                <h3 className="font-medium text-text-primary mb-4">Monthly Revenue</h3>
-                                <div className="flex items-end justify-between gap-2 h-48">
-                                    {analyticsData.monthlyRevenue.map((month, idx) => (
-                                        <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                                            <div
-                                                className="w-full bg-primary/20 rounded-t-lg transition-all hover:bg-primary/30 relative group"
-                                                style={{ height: `${(month.value / maxRevenue) * 100}%` }}
-                                            >
-                                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-text-primary text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                                    ₹{month.value.toLocaleString()}
-                                                </div>
+                                <h3 className="font-medium text-text-primary mb-4">Revenue Overview</h3>
+                                {analyticsData.monthlyRevenue.length > 0 ? (
+                                    <div className="flex items-end justify-between gap-2 h-48">
+                                        {analyticsData.monthlyRevenue.map((month, idx) => (
+                                            <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                                                 <div
-                                                    className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-lg transition-all"
-                                                    style={{ height: idx === analyticsData.monthlyRevenue.length - 2 ? '100%' : '60%' }}
-                                                />
+                                                    className="w-full bg-primary/20 rounded-t-lg transition-all hover:bg-primary/30 relative group"
+                                                    style={{ height: `${(month.value / maxRevenue) * 100}%` }}
+                                                >
+                                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-text-primary text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                        ₹{month.value.toLocaleString()}
+                                                    </div>
+                                                    <div
+                                                        className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-lg transition-all"
+                                                        style={{ height: '0%' }} // Animation could go here
+                                                    />
+                                                </div>
+                                                <span className="text-xs text-text-muted">{month.label}</span>
                                             </div>
-                                            <span className="text-xs text-text-muted">{month.month}</span>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="h-48 flex items-center justify-center text-text-muted text-sm">No revenue data available</div>
+                                )}
                             </div>
                         </section>
 
@@ -205,20 +252,24 @@ const SellerAnalytics = () => {
                             <div className="bg-background-alt border border-border rounded-xl p-5">
                                 <h3 className="font-medium text-text-primary mb-4">Sales by Category</h3>
                                 <div className="space-y-4">
-                                    {analyticsData.categoryBreakdown.map((cat, idx) => (
-                                        <div key={idx}>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-sm text-text-primary">{cat.category}</span>
-                                                <span className="text-sm font-medium text-text-primary">{cat.sales} sales ({cat.percentage}%)</span>
+                                    {analyticsData.categoryBreakdown.length > 0 ? (
+                                        analyticsData.categoryBreakdown.map((cat, idx) => (
+                                            <div key={idx}>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-sm text-text-primary">{cat.category}</span>
+                                                    <span className="text-sm font-medium text-text-primary">{cat.sales} sales ({cat.percentage}%)</span>
+                                                </div>
+                                                <div className="h-2 bg-border rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-500"
+                                                        style={{ width: `${cat.percentage}%`, backgroundColor: cat.color }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="h-2 bg-border rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full rounded-full transition-all duration-500"
-                                                    style={{ width: `${cat.percentage}%`, backgroundColor: cat.color }}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ))
+                                    ) : (
+                                        <div className="text-center text-text-muted text-sm py-8">No category sales data</div>
+                                    )}
                                 </div>
                             </div>
                         </section>
@@ -241,22 +292,28 @@ const SellerAnalytics = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {analyticsData.topPerformers.map((book, idx) => (
-                                            <tr key={idx} className="hover:bg-background transition-colors">
-                                                <td className="px-4 py-3">
-                                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                        idx === 1 ? 'bg-gray-100 text-gray-700' :
-                                                            idx === 2 ? 'bg-orange-100 text-orange-700' :
-                                                                'bg-background-alt text-text-muted'
-                                                        }`}>
-                                                        {idx + 1}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-text-primary">{book.title}</td>
-                                                <td className="px-4 py-3 text-sm text-text-secondary">{book.sales}</td>
-                                                <td className="px-4 py-3 text-sm font-medium text-primary">₹{book.revenue.toLocaleString()}</td>
+                                        {analyticsData.topPerformers.length > 0 ? (
+                                            analyticsData.topPerformers.map((book, idx) => (
+                                                <tr key={idx} className="hover:bg-background transition-colors">
+                                                    <td className="px-4 py-3">
+                                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                                            idx === 1 ? 'bg-gray-100 text-gray-700' :
+                                                                idx === 2 ? 'bg-orange-100 text-orange-700' :
+                                                                    'bg-background-alt text-text-muted'
+                                                            }`}>
+                                                            {idx + 1}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-text-primary">{book.title}</td>
+                                                    <td className="px-4 py-3 text-sm text-text-secondary">{book.totalQuantitySold}</td>
+                                                    <td className="px-4 py-3 text-sm font-medium text-primary">₹{book.totalRevenue.toLocaleString()}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="4" className="px-4 py-6 text-center text-text-muted text-sm">No sales data available</td>
                                             </tr>
-                                        ))}
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { assets } from '../../assets/assets';
 import BuyerSidebar from '../../components/buyer/BuyerSidebar';
 import BuyerHeader from '../../components/buyer/BuyerHeader';
@@ -14,8 +14,17 @@ const BuyerHome = () => {
     const [recReason, setRecReason] = useState('Suggested for You');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [searchParams] = useSearchParams();
 
     const categories = ['All', 'Fiction', 'Non-Fiction', 'Self-Help', 'Thriller', 'Academic'];
+
+    // Sync search query with URL params
+    useEffect(() => {
+        const query = searchParams.get('search');
+        if (query) {
+            setSearchQuery(query);
+        }
+    }, [searchParams]);
 
     // Fetch books from API
     useEffect(() => {
