@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import SellerSidebar from '../../components/seller/SellerSidebar';
 import SellerHeader from '../../components/seller/SellerHeader';
-import { assets } from '../../assets/assets';
+import { bookAPI, uploadAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 const EditBook = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const navigate = useNavigate();
     const { bookId } = useParams();
 
-    // Mock book data - replace with API fetch
     const [formData, setFormData] = useState({
         title: '',
         author: '',
@@ -24,35 +24,51 @@ const EditBook = () => {
     });
 
     const [loading, setLoading] = useState(true);
+    const [imageUploading, setImageUploading] = useState(false);
 
-    // Simulate fetching book data
     useEffect(() => {
-        // Mock data - replace with API call
-        const mockBooks = {
-            1: { title: 'The Psychology of Money', author: 'Morgan Housel', isbn: '978-0857197689', category: 'self-help', condition: 'good', price: 299, originalPrice: 450, stock: 15, description: 'Timeless lessons on wealth, greed, and happiness.', image: assets.landing.featured },
-            2: { title: 'Atomic Habits', author: 'James Clear', isbn: '978-0735211292', category: 'self-help', condition: 'like_new', price: 349, originalPrice: 499, stock: 8, description: 'An Easy & Proven Way to Build Good Habits & Break Bad Ones.', image: assets.categories.selfHelp },
-            3: { title: 'Deep Work', author: 'Cal Newport', isbn: '978-1455586691', category: 'business', condition: 'good', price: 325, originalPrice: 450, stock: 2, description: 'Rules for Focused Success in a Distracted World.', image: assets.categories.nonFiction },
+        const fetchBook = async () => {
+            try {
+                setLoading(true);
+                const response = await bookAPI.getBookById(bookId);
+                console.log('API Response:', response.data); // DEBUG
+                const book = response.data.book;
+                console.log('Book Data:', book); // DEBUG
+                console.log('Book Images:', book?.images); // DEBUG
+
+                if (book) {
+                    // Initialize images: use book.images if available and non-empty, otherwise fallback to [book.image] if it exists
+                    let initialImages = book.images && book.images.length > 0 ? book.images : [];
+                    if (initialImages.length === 0 && book.image) {
+                        initialImages = [book.image];
+                    }
+
+                    setFormData({
+                        title: book.title,
+                        author: book.author,
+                        isbn: book.isbn || '',
+                        category: book.category,
+                        condition: book.condition,
+                        price: book.price.toString(),
+                        originalPrice: book.originalPrice ? book.originalPrice.toString() : '',
+                        stock: book.stock.toString(),
+                        description: book.description || '',
+                        images: initialImages,
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching book:', error);
+                toast.error('Failed to load book details');
+                navigate('/seller/books');
+            } finally {
+                setLoading(false);
+            }
         };
 
-        setTimeout(() => {
-            const book = mockBooks[bookId];
-            if (book) {
-                setFormData({
-                    title: book.title,
-                    author: book.author,
-                    isbn: book.isbn || '',
-                    category: book.category,
-                    condition: book.condition,
-                    price: book.price.toString(),
-                    originalPrice: book.originalPrice.toString(),
-                    stock: book.stock.toString(),
-                    description: book.description || '',
-                    images: book.image ? [book.image] : [],
-                });
-            }
-            setLoading(false);
-        }, 300);
-    }, [bookId]);
+        if (bookId) {
+            fetchBook();
+        }
+    }, [bookId, navigate]);
 
     const categories = [
         'Fiction', 'Non-Fiction', 'Self-Help', 'Thriller', 'Romance',
@@ -71,17 +87,86 @@ const EditBook = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        // TODO: Submit to API
-        console.log('Updated book:', formData);
-        navigate('/seller/books');
+    const handleImageUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        if (formData.images.length + files.length > 2) {
+            toast.error('You can only upload a maximum of 2 images');
+            return;
+        }
+
+        setImageUploading(true);
+        const uploadedUrls = [];
+
+        try {
+            for (const file of files) {
+                if (file.size > 5 * 1024 * 1024) {
+                    toast.error(`File ${file.name} is too large (max 5MB)`);
+                    continue;
+                }
+
+                const data = new FormData();
+                data.append('image', file);
+
+                const response = await uploadAPI.uploadImage(data);
+                if (response.data.success) {
+                    uploadedUrls.push(response.data.url);
+                }
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, ...uploadedUrls]
+            }));
+            toast.success('Images uploaded successfully');
+        } catch (error) {
+            console.error('Upload failed:', error);
+            toast.error('Failed to upload images');
+        } finally {
+            setImageUploading(false);
+            e.target.value = '';
+        }
     };
 
-    const handleDelete = () => {
-        if (window.confirm('Are you sure you want to delete this book?')) {
-            // TODO: Delete via API
-            navigate('/seller/books');
+    const removeImage = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const payload = {
+                ...formData,
+                image: formData.images.length > 0 ? formData.images[0] : "", // Sync primary image
+            };
+
+            const response = await bookAPI.updateBook(bookId, payload);
+            if (response.data.success) {
+                toast.success('Book updated successfully');
+                navigate('/seller/books');
+            }
+        } catch (error) {
+            console.error('Error updating book:', error);
+            toast.error(error.response?.data?.message || 'Failed to update book');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (window.confirm('Are you sure you want to delete this book? This action cannot be undone.')) {
+            try {
+                const response = await bookAPI.deleteBook(bookId);
+                if (response.data.success) {
+                    toast.success('Book deleted successfully');
+                    navigate('/seller/books');
+                }
+            } catch (error) {
+                console.error('Error deleting book:', error);
+                toast.error(error.response?.data?.message || 'Failed to delete book');
+            }
         }
     };
 
@@ -283,37 +368,63 @@ const EditBook = () => {
 
                             {/* Current Images */}
                             <div className="bg-background-alt border border-border rounded-xl p-5">
-                                <h2 className="font-medium text-text-primary mb-4">Book Images</h2>
+                                <h2 className="font-medium text-text-primary mb-4">Book Images (Max 2)</h2>
+
+                                {/* Image Preview Grid */}
                                 {formData.images.length > 0 && (
-                                    <div className="flex gap-3 mb-4">
-                                        {formData.images.map((img, idx) => (
-                                            <div key={idx} className="relative w-24 h-32 rounded-lg overflow-hidden border border-border">
-                                                <img src={img} alt="Book" className="w-full h-full object-cover" />
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        {formData.images.map((url, idx) => (
+                                            <div key={idx} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-border group bg-background-alt">
+                                                <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-contain" />
                                                 <button
                                                     type="button"
-                                                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs cursor-pointer"
-                                                    onClick={() => setFormData(p => ({ ...p, images: p.images.filter((_, i) => i !== idx) }))}
+                                                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={() => removeImage(idx)}
                                                 >
-                                                    ×
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
                                                 </button>
                                             </div>
                                         ))}
                                     </div>
                                 )}
-                                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                                    <svg className="w-8 h-8 text-text-muted mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    <p className="text-sm text-text-primary">Add more images</p>
-                                    <p className="text-xs text-text-muted">PNG, JPG up to 5MB</p>
-                                </div>
+
+                                {/* Upload Button */}
+                                {formData.images.length < 2 && (
+                                    <label className="block border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-background">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={handleImageUpload}
+                                            className="hidden"
+                                            disabled={imageUploading}
+                                        />
+                                        {imageUploading ? (
+                                            <div className="flex flex-col items-center">
+                                                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2"></div>
+                                                <p className="text-sm text-text-muted">Uploading...</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <svg className="w-10 h-10 text-text-muted mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                <p className="text-sm text-text-primary mb-1">Click to upload images</p>
+                                                <p className="text-xs text-text-muted">PNG, JPG up to 5MB</p>
+                                            </>
+                                        )}
+                                    </label>
+                                )}
                             </div>
 
                             {/* Actions */}
                             <div className="flex flex-col sm:flex-row gap-3 pt-4">
                                 <button
                                     type="submit"
-                                    className="flex-1 sm:flex-none px-8 py-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors cursor-pointer"
+                                    disabled={imageUploading}
+                                    className="flex-1 sm:flex-none px-8 py-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Save Changes
                                 </button>

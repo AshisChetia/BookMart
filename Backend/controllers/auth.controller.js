@@ -69,17 +69,25 @@ export const login = async (req, res) => {
 
         const user = await User.findOne({ email })
         if (!user) {
+            console.log(`Login failed: User not found for email ${email}`);
             return res.status(400).json({
                 success: false,
-                message: "Invalid credentials"
+                message: "User not found"
             })
         }
 
+        console.log(`User found: ${user.email}, ID: ${user._id}`);
+        console.log(`Stored password hash: ${user.password.substring(0, 20)}...`);
+
         const isPasswordMatch = await bcrypt.compare(password, user.password);
+
+        console.log(`Password comparison result: ${isPasswordMatch}`);
+
         if (!isPasswordMatch) {
+            console.log(`Login failed: Password mismatch for user ${email}`);
             return res.status(400).json({
                 success: false,
-                message: "Invalid credentials"
+                message: "Invalid password"
             })
         }
 
@@ -292,5 +300,56 @@ export const setDefaultAddress = async (req, res) => {
         res.status(200).json({ success: true, user });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user._id;
+
+        console.log(`Attempting password change for user ID: ${userId}`);
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "All fields are required"
+            });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            console.log("User not found during password change");
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            console.log("Current password mismatch during change");
+            return res.status(400).json({
+                success: false,
+                message: "Incorrect current password"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await user.save();
+        console.log("Password updated successfully for user ID:", userId);
+
+        return res.status(200).json({
+            success: true,
+            message: "Password changed successfully"
+        });
+
+    } catch (error) {
+        console.error("Change password error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error during password change"
+        });
     }
 };

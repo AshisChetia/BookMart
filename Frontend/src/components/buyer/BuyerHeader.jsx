@@ -197,7 +197,7 @@ const BuyerHeader = ({ searchQuery, setSearchQuery, onMenuClick }) => {
                         </div>
 
                         {/* Logo */}
-                        <Link to="/" className="text-base sm:text-lg font-medium text-text-primary tracking-tight hidden xs:block sm:block ml-1">
+                        <Link to="/buyer/home" className="text-base sm:text-lg font-medium text-text-primary tracking-tight hidden xs:block sm:block ml-1">
                             BookMart<span className="text-primary">.</span>
                         </Link>
                     </div>

@@ -43,6 +43,7 @@ export const authAPI = {
     login: (data) => api.post('/auth/login', data),
     getMe: () => api.get('/auth/me'),
     updateProfile: (data) => api.put('/auth/profile', data),
+    changePassword: (data) => api.put('/auth/change-password', data),
     // Address management
     addAddress: (data) => api.post('/auth/address', data),
     updateAddress: (id, data) => api.put(`/auth/address/${id}`, data),

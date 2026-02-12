@@ -25,6 +25,8 @@ const BookDetails = () => {
     const [showBuyNowModal, setShowBuyNowModal] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState(null);
 
+    const [selectedImage, setSelectedImage] = useState(null);
+
     // Get source info from navigation state
     const sourceInfo = location.state || { from: 'home' };
 
@@ -35,6 +37,12 @@ const BookDetails = () => {
                 setLoading(true);
                 const response = await bookAPI.getBookById(bookId);
                 setBook(response.data.book);
+                // Initialize selected image
+                const bookData = response.data.book;
+                if (bookData) {
+                    const img = bookData.images && bookData.images.length > 0 ? bookData.images[0] : bookData.image;
+                    setSelectedImage(img);
+                }
                 setError('');
             } catch (err) {
                 console.error('Error fetching book:', err);
@@ -120,11 +128,19 @@ const BookDetails = () => {
     };
 
     // Helper to get book image or placeholder
-    const getBookImage = (bookData) => {
-        if (bookData?.image && (bookData.image.startsWith('http://') || bookData.image.startsWith('https://'))) {
-            return bookData.image;
+    const getMainImage = () => {
+        if (selectedImage && (selectedImage.startsWith('http://') || selectedImage.startsWith('https://'))) {
+            return selectedImage;
+        }
+        if (book?.image && (book.image.startsWith('http://') || book.image.startsWith('https://'))) {
+            return book.image;
         }
         return assets.landing.featured;
+    };
+
+    const getAllImages = () => {
+        if (!book) return [];
+        return book.images && book.images.length > 0 ? book.images : [book.image];
     };
 
     // Fallback for broken images
@@ -223,6 +239,7 @@ const BookDetails = () => {
     }
 
     const discountPercent = book.originalPrice ? Math.round((1 - book.price / book.originalPrice) * 100) : 0;
+    const allImages = getAllImages();
 
     return (
         <div className="min-h-screen bg-background font-sans flex overflow-x-hidden">
@@ -245,15 +262,15 @@ const BookDetails = () => {
 
                     {/* Book Details Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-                        {/* Left - Book Image */}
-                        <div className="flex justify-center lg:justify-end">
+                        {/* Left - Book Image Gallery */}
+                        <div className="flex flex-col items-center lg:items-end gap-4">
                             <div className="relative max-w-sm w-full">
-                                <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border border-border">
+                                <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border border-border bg-white">
                                     <img
-                                        src={getBookImage(book)}
+                                        src={getMainImage()}
                                         alt={book.title}
                                         onError={handleImageError}
-                                        className="w-full h-full object-cover"
+                                        className="w-full h-full object-contain p-2"
                                     />
                                 </div>
                                 {discountPercent > 0 && (
@@ -262,6 +279,26 @@ const BookDetails = () => {
                                     </span>
                                 )}
                             </div>
+
+                            {/* Thumbnails */}
+                            {allImages.length > 1 && (
+                                <div className="flex gap-3 max-w-sm w-full overflow-x-auto pb-2">
+                                    {allImages.map((img, idx) => (
+                                        <div
+                                            key={idx}
+                                            onClick={() => setSelectedImage(img)}
+                                            className={`w-16 h-20 flex-shrink-0 rounded-lg overflow-hidden border cursor-pointer transition-all ${selectedImage === img ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:border-primary/50'
+                                                }`}
+                                        >
+                                            <img
+                                                src={img}
+                                                alt={`View ${idx + 1}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Right - Book Info */}
@@ -287,14 +324,14 @@ const BookDetails = () => {
                                 by <span className="text-primary font-medium">{book.author}</span>
                             </p>
 
-                            {/* Rating */}
+                            {/* Free Delivery */}
                             <div className="flex items-center gap-2 mb-6">
-                                <div className="flex items-center">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <span key={star} className={star <= 4 ? "text-yellow-400" : "text-gray-300"}>★</span>
-                                    ))}
+                                <div className="p-1.5 bg-green-50 rounded-full">
+                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                    </svg>
                                 </div>
-                                <span className="text-sm text-text-secondary">4.5 rating</span>
+                                <span className="text-sm font-medium text-green-700">Free Delivery all over the Assam</span>
                             </div>
 
                             {/* Price */}

@@ -175,10 +175,7 @@ const BuyerHome = () => {
                                                             {recommendations[0]?.title}
                                                         </h3>
                                                         <p className="text-sm text-text-secondary mt-1">{recommendations[0]?.author}</p>
-                                                        <div className="flex items-center gap-1 mt-2">
-                                                            <span className="text-yellow-400">★</span>
-                                                            <span className="text-sm text-text-secondary">4.8</span>
-                                                        </div>
+
                                                         <div className="flex items-baseline gap-2 mt-4">
                                                             <span className="text-2xl font-bold text-text-primary">₹{recommendations[0]?.price}</span>
                                                         </div>
@@ -274,9 +271,7 @@ const BuyerHome = () => {
                                                     <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">{book.author}</p>
                                                     <div className="flex items-center justify-between mt-2">
                                                         <span className="font-bold text-text-primary">₹{book.price}</span>
-                                                        <div className="flex items-center gap-1 text-xs text-text-secondary">
-                                                            <span className="text-yellow-400">★</span> 4.5
-                                                        </div>
+
                                                     </div>
                                                     <p className="text-[10px] text-text-muted mt-1 line-clamp-1">
                                                         by {book.seller?.fullname || 'Unknown Seller'}

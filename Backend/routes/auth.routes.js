@@ -1,5 +1,5 @@
 import express from "express";
-import { signup, login, getMe, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress } from "../controllers/auth.controller.js";
+import { signup, login, getMe, updateProfile, addAddress, updateAddress, deleteAddress, setDefaultAddress, changePassword } from "../controllers/auth.controller.js";
 import { isAuthenticated } from "../middleware/auth.middleware.js";
 
 
@@ -9,6 +9,7 @@ router.post('/auth/signup', signup);
 router.post('/auth/login', login);
 router.get('/auth/me', isAuthenticated, getMe);
 router.put('/auth/profile', isAuthenticated, updateProfile);
+router.put('/auth/change-password', isAuthenticated, changePassword);
 
 // Address Management
 router.post('/auth/address', isAuthenticated, addAddress);
