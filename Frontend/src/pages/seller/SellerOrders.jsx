@@ -16,9 +16,9 @@ const SellerOrders = () => {
     const [showInvoice, setShowInvoice] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (isBackground = false) => {
         try {
-            setLoading(true);
+            if (!isBackground) setLoading(true);
             const response = await orderAPI.getSellerOrders();
             if (response.data.success) {
                 setOrders(response.data.orders);
@@ -26,16 +26,23 @@ const SellerOrders = () => {
         } catch (error) {
             console.error('Error fetching orders:', error);
             // Don't show error toast if it's just 404/no orders (now handled by backend returning [] but good constraint)
-            if (error.response?.status !== 404) {
+            if (error.response?.status !== 404 && !isBackground) {
                 toast.error('Failed to load orders');
             }
         } finally {
-            setLoading(false);
+            if (!isBackground) setLoading(false);
         }
     };
 
     useEffect(() => {
         fetchOrders();
+
+        // Poll for updates every 2 seconds
+        const intervalId = setInterval(() => {
+            fetchOrders(true);
+        }, 2000);
+
+        return () => clearInterval(intervalId);
     }, []);
 
     const handleStatusUpdate = async (orderId, newStatus) => {

@@ -18,27 +18,35 @@ const MyOrders = () => {
     const [orderToCancel, setOrderToCancel] = useState(null);
 
     // Fetch orders from API
-    useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                setLoading(true);
-                const response = await orderAPI.getMyOrders();
-                setOrders(response.data.orders || []);
-                setError('');
-            } catch (err) {
-                console.error('Error fetching orders:', err);
-                if (err.response?.status === 404) {
-                    // No orders found is not an error
-                    setOrders([]);
-                    setError('');
-                } else {
-                    setError('Unable to load orders. Please try again later.');
-                }
-            } finally {
-                setLoading(false);
+    const fetchOrders = async (isBackground = false) => {
+        try {
+            if (!isBackground) setLoading(true);
+            const response = await orderAPI.getMyOrders();
+            setOrders(response.data.orders || []);
+            if (!isBackground) setError('');
+        } catch (err) {
+            console.error('Error fetching orders:', err);
+            if (err.response?.status === 404) {
+                // No orders found is not an error
+                setOrders([]);
+                if (!isBackground) setError('');
+            } else {
+                if (!isBackground) setError('Unable to load orders. Please try again later.');
             }
-        };
+        } finally {
+            if (!isBackground) setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchOrders();
+
+        // Poll for updates every 2 seconds
+        const intervalId = setInterval(() => {
+            fetchOrders(true);
+        }, 2000);
+
+        return () => clearInterval(intervalId);
     }, []);
 
     const openCancelModal = (orderId) => {

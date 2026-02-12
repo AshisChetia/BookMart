@@ -70,7 +70,7 @@ const SellerAnalytics = () => {
                     const totalOrders = stats.totalOrders || 1; // Prevent division by zero
 
                     // Calculate metrics
-                    const completedOrders = (orderStats.delivered || 0) + (orderStats.shipped || 0);
+                    const completedOrders = (orderStats.delivered || 0); // Only delivered counts as completed
                     const completionRate = Math.round((completedOrders / totalOrders) * 100);
 
                     const cancelledOrders = orderStats.cancelled || 0;
@@ -115,7 +115,7 @@ const SellerAnalytics = () => {
     }, [timeRange]); // Re-run when timeRange changes
 
     const maxRevenue = analyticsData.monthlyRevenue.length > 0
-        ? Math.max(...analyticsData.monthlyRevenue.map(m => m.value))
+        ? Math.max(...analyticsData.monthlyRevenue.map(m => m.value)) * 1.2
         : 1000;
 
     if (loading) {
@@ -219,31 +219,77 @@ const SellerAnalytics = () => {
                     <div className="grid lg:grid-cols-2 gap-6 mb-6">
                         {/* Revenue Chart */}
                         <section>
-                            <div className="bg-background-alt border border-border rounded-xl p-5">
-                                <h3 className="font-medium text-text-primary mb-4">Revenue Overview</h3>
-                                {analyticsData.monthlyRevenue.length > 0 ? (
-                                    <div className="flex items-end justify-between gap-2 h-48">
-                                        {analyticsData.monthlyRevenue.map((month, idx) => (
-                                            <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                                                <div
-                                                    className="w-full bg-primary/20 rounded-t-lg transition-all hover:bg-primary/30 relative group"
-                                                    style={{ height: `${(month.value / maxRevenue) * 100}%` }}
-                                                >
-                                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-text-primary text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                                        ₹{month.value.toLocaleString()}
-                                                    </div>
-                                                    <div
-                                                        className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-lg transition-all"
-                                                        style={{ height: '0%' }} // Animation could go here
-                                                    />
-                                                </div>
-                                                <span className="text-xs text-text-muted">{month.label}</span>
-                                            </div>
-                                        ))}
+                            <div className="bg-background-alt border border-border rounded-xl p-5 h-full">
+                                <h3 className="font-medium text-text-primary mb-6">Revenue Overview</h3>
+
+                                <div className="h-64 flex gap-4">
+                                    {/* Y-Axis Labels */}
+                                    <div className="flex flex-col justify-between text-xs text-text-muted text-right py-6 w-8 shrink-0">
+                                        <span>₹{Math.round(maxRevenue).toLocaleString()}</span>
+                                        <span>₹{Math.round(maxRevenue * 0.75).toLocaleString()}</span>
+                                        <span>₹{Math.round(maxRevenue * 0.5).toLocaleString()}</span>
+                                        <span>₹{Math.round(maxRevenue * 0.25).toLocaleString()}</span>
+                                        <span>₹0</span>
                                     </div>
-                                ) : (
-                                    <div className="h-48 flex items-center justify-center text-text-muted text-sm">No revenue data available</div>
-                                )}
+
+                                    {/* Chart Area */}
+                                    <div className="flex-1 relative">
+                                        {/* Horizontal Grid Lines */}
+                                        <div className="absolute inset-0 flex flex-col justify-between py-6 pointer-events-none z-0">
+                                            <div className="border-b border-border/50 border-dashed w-full h-0"></div>
+                                            <div className="border-b border-border/50 border-dashed w-full h-0"></div>
+                                            <div className="border-b border-border/50 border-dashed w-full h-0"></div>
+                                            <div className="border-b border-border/50 border-dashed w-full h-0"></div>
+                                            <div className="border-b border-border w-full h-0"></div>
+                                        </div>
+
+                                        {/* Bars Grid */}
+                                        <div className="absolute inset-0 grid grid-cols-6 items-end pb-6 pt-6 z-10 pl-2">
+                                            {(() => {
+                                                // Generate last 6 months
+                                                const last6Months = Array.from({ length: 6 }, (_, i) => {
+                                                    const d = new Date();
+                                                    d.setMonth(d.getMonth() - (5 - i));
+                                                    return {
+                                                        label: d.toLocaleString('default', { month: 'short' }),
+                                                        value: 0
+                                                    };
+                                                });
+
+                                                // Merge actual data
+                                                const filledData = last6Months.map(m => {
+                                                    const found = analyticsData.monthlyRevenue.find(d => d.label === m.label);
+                                                    return found || m;
+                                                });
+
+                                                return filledData.map((data, idx) => (
+                                                    <div key={idx} className="flex flex-col items-center justify-end h-full gap-2 group relative">
+                                                        {/* Tooltip */}
+                                                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-2 py-1 bg-text-primary text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20 shadow-lg">
+                                                            ₹{data.value.toLocaleString()}
+                                                        </div>
+
+                                                        {/* Bar */}
+                                                        <div className="w-full flex justify-center items-end flex-1">
+                                                            <div
+                                                                className="w-8 sm:w-10 bg-primary/20 hover:bg-primary/40 rounded-t-sm transition-all duration-500 relative overflow-hidden"
+                                                                style={{ height: `${data.value > 0 ? (data.value / maxRevenue) * 100 : 4}%`, minHeight: '4px' }}
+                                                            >
+                                                                <div
+                                                                    className="absolute bottom-0 left-0 right-0 bg-primary/90 transition-all duration-700 delay-100"
+                                                                    style={{ height: data.value > 0 ? '100%' : '0%' }}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Label */}
+                                                        <span className="text-xs text-text-muted font-medium">{data.label}</span>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </section>
 

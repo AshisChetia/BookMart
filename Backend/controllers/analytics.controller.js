@@ -51,7 +51,7 @@ export const getSellerDashboard = async (req, res) => {
             {
                 $match: {
                     seller: sellerId,
-                    status: { $in: ['delivered', 'shipped', 'accepted'] },
+                    status: 'delivered',
                     createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) }
                 }
             },
@@ -97,7 +97,7 @@ export const getSellerDashboard = async (req, res) => {
                 repeatCustomerRate: repeatRate,
                 repeatCustomerCount: repeatCustomerCount,
                 monthlyRevenue: monthlyRevenue.map(item => ({
-                    month: new Date(0, item._id.month - 1).toLocaleString('default', { month: 'short' }),
+                    label: new Date(0, item._id.month - 1).toLocaleString('default', { month: 'short' }),
                     value: item.revenue
                 })),
                 categorySales: categorySales.map(item => ({
