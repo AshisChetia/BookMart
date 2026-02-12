@@ -15,12 +15,12 @@ const LandingPage = () => {
         { name: 'Non-Fiction', count: 0, image: assets.categories.nonFiction },
         { name: 'Self-Help', count: 0, image: assets.categories.selfHelp },
         { name: 'Thriller', count: 0, image: assets.categories.thriller },
-        { name: 'Romance', count: 0, image: assets.categories.fiction },
-        { name: 'Science Fiction', count: 0, image: assets.categories.thriller },
-        { name: 'Biography', count: 0, image: assets.categories.nonFiction },
-        { name: 'History', count: 0, image: assets.categories.nonFiction },
-        { name: 'Business', count: 0, image: assets.categories.selfHelp },
-        { name: 'Children', count: 0, image: assets.categories.fiction }
+        { name: 'Romance', count: 0, image: assets.categories.romance },
+        { name: 'Science Fiction', count: 0, image: assets.categories.scifi },
+        { name: 'Biography', count: 0, image: assets.categories.biography },
+        { name: 'History', count: 0, image: assets.categories.history },
+        { name: 'Business', count: 0, image: assets.categories.business },
+        { name: 'Children', count: 0, image: assets.categories.children }
     ]);
 
     useEffect(() => {
@@ -269,7 +269,7 @@ const LandingPage = () => {
                                     <img
                                         src={cat.image}
                                         alt={cat.name}
-                                        className="w-full h-full object-cover opacity-70 group-hover:scale-110 transition-transform duration-700"
+                                        className="w-full h-full object-cover opacity-70 scale-[1.10] group-hover:scale-110 transition-transform duration-700"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80" />
                                 </div>

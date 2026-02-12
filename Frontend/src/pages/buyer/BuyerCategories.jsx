@@ -43,42 +43,42 @@ const BuyerCategories = () => {
             name: 'Romance',
             description: 'Love stories that warm the heart',
             count: 0,
-            image: assets.categories.fiction,
+            image: assets.categories.romance,
         },
         {
             id: 6,
             name: 'Science Fiction',
             description: 'Journey through futures and alternate realities',
             count: 0,
-            image: assets.categories.thriller,
+            image: assets.categories.scifi,
         },
         {
             id: 7,
             name: 'Biography',
             description: 'Inspiring life stories of remarkable individuals',
             count: 0,
-            image: assets.categories.nonFiction,
+            image: assets.categories.biography,
         },
         {
             id: 8,
             name: 'History',
             description: 'Journey through time and past events',
             count: 0,
-            image: assets.categories.nonFiction,
+            image: assets.categories.history,
         },
         {
             id: 9,
             name: 'Business',
             description: 'Insights for professional growth and success',
             count: 0,
-            image: assets.categories.selfHelp,
+            image: assets.categories.business,
         },
         {
             id: 10,
             name: 'Children',
             description: 'Stories and learning for young minds',
             count: 0,
-            image: assets.categories.fiction,
+            image: assets.categories.children,
         }
     ]);
 
@@ -174,7 +174,7 @@ const BuyerCategories = () => {
                                     <img
                                         src={category.image}
                                         alt={category.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                        className="w-full h-full object-cover scale-[1.10] group-hover:scale-105 transition-transform duration-700"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
@@ -215,7 +215,7 @@ const BuyerCategories = () => {
                                     <img
                                         src={category.image}
                                         alt={category.name}
-                                        className="w-full h-full object-cover opacity-70 group-hover:scale-110 transition-transform duration-700"
+                                        className="w-full h-full object-cover opacity-70 scale-[1.10] group-hover:scale-110 transition-transform duration-700"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80" />
 
