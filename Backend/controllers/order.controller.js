@@ -17,7 +17,7 @@ export const createOrder = async (req, res) => {
         })
 
         // Notify Seller
-        await createNotification(
+        createNotification(
             seller,
             "You have a new order!",
             "order_update",
@@ -26,7 +26,7 @@ export const createOrder = async (req, res) => {
         );
 
         // Notify Buyer
-        await createNotification(
+        createNotification(
             buyer,
             "Your order has been placed successfully!",
             "order_update",
@@ -135,7 +135,7 @@ export const updateOrderStatus = async (req, res) => {
         await order.save();
 
         // Notify Buyer
-        await createNotification(
+        createNotification(
             order.buyer,
             `Your order for "${order.book?.title || 'a book'}" has been ${status}`,
             "order_update",
@@ -185,7 +185,7 @@ export const deleteOrder = async (req, res) => {
         }
 
         // Notify Seller before deleting
-        await createNotification(
+        createNotification(
             order.seller,
             `Order for "${order.book?.title || 'a book'}" has been cancelled by the buyer`,
             "order_cancelled",

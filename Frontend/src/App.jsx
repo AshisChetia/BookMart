@@ -1,27 +1,35 @@
-import LandingPage from "./pages/LandingPage";
-import AuthPage from "./pages/auth/AuthPage";
-import BuyerHome from "./pages/buyer/BuyerHome";
-import BuyerCategories from "./pages/buyer/BuyerCategories";
-import CategoryBooks from "./pages/buyer/CategoryBooks";
-import BuyerProfile from "./pages/buyer/BuyerProfile";
-import NewArrivals from "./pages/buyer/NewArrivals";
-import MyOrders from "./pages/buyer/MyOrders";
-import OrderDetails from "./pages/buyer/OrderDetails";
-import Wishlist from "./pages/buyer/Wishlist";
-import BookDetails from "./pages/buyer/BookDetails";
-import Cart from "./pages/buyer/Cart";
-import SellerHome from "./pages/seller/SellerHome";
-import SellerAnalytics from "./pages/seller/SellerAnalytics";
-import SellerBooks from "./pages/seller/SellerBooks";
-import AddBook from "./pages/seller/AddBook";
-import EditBook from "./pages/seller/EditBook";
-import SellerOrders from "./pages/seller/SellerOrders";
-import SellerProfile from "./pages/seller/SellerProfile";
 import { Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import Loading from "./components/Loading";
+
+// Lazy load pages
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const AuthPage = lazy(() => import("./pages/auth/AuthPage"));
+
+// Buyer Pages
+const BuyerHome = lazy(() => import("./pages/buyer/BuyerHome"));
+const BuyerCategories = lazy(() => import("./pages/buyer/BuyerCategories"));
+const CategoryBooks = lazy(() => import("./pages/buyer/CategoryBooks"));
+const BuyerProfile = lazy(() => import("./pages/buyer/BuyerProfile"));
+const NewArrivals = lazy(() => import("./pages/buyer/NewArrivals"));
+const MyOrders = lazy(() => import("./pages/buyer/MyOrders"));
+const OrderDetails = lazy(() => import("./pages/buyer/OrderDetails"));
+const Wishlist = lazy(() => import("./pages/buyer/Wishlist"));
+const BookDetails = lazy(() => import("./pages/buyer/BookDetails"));
+const Cart = lazy(() => import("./pages/buyer/Cart"));
+
+// Seller Pages
+const SellerHome = lazy(() => import("./pages/seller/SellerHome"));
+const SellerAnalytics = lazy(() => import("./pages/seller/SellerAnalytics"));
+const SellerBooks = lazy(() => import("./pages/seller/SellerBooks"));
+const AddBook = lazy(() => import("./pages/seller/AddBook"));
+const EditBook = lazy(() => import("./pages/seller/EditBook"));
+const SellerOrders = lazy(() => import("./pages/seller/SellerOrders"));
+const SellerProfile = lazy(() => import("./pages/seller/SellerProfile"));
 
 function App() {
   return (
-    <>
+    <Suspense fallback={<Loading />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
@@ -45,7 +53,7 @@ function App() {
         <Route path="/seller/orders" element={<SellerOrders />} />
         <Route path="/seller/profile" element={<SellerProfile />} />
       </Routes>
-    </>
+    </Suspense>
   );
 }
 

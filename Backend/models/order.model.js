@@ -34,4 +34,8 @@ const orderSchema = new mongoose.Schema({
 
 const Order = mongoose.model("Order", orderSchema);
 
+// Indexes
+orderSchema.index({ buyer: 1, createdAt: -1 });
+orderSchema.index({ seller: 1, createdAt: -1 });
+
 export default Order;
